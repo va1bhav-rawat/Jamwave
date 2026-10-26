@@ -1,0 +1,28 @@
+{
+  "name": "jamwave",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Jamwave — free, synced music jam sessions in the browser.",
+  "packageManager": "pnpm@12.4.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --stream --filter \"./apps/*\" run dev",
+    "dev:web": "pnpm --filter @jamwave/web dev",
+    "dev:server": "pnpm --filter @jamwave/server dev",
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0"
+  }
+}

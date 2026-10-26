@@ -1,0 +1,157 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --color-bg: #09090b;
+  --color-bg-elevated: #0f0f12;
+  --color-surface: #16161a;
+  --color-surface-hover: #1e1e24;
+  --color-border: #26262e;
+  --color-border-strong: #34343e;
+  --color-fg: #fafafa;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-subtle: #71717a;
+  --color-accent: #a855f7;
+  --color-accent-2: #ec4899;
+  --color-accent-3: #f97316;
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+
+  --animate-float-up: float-up 2.5s ease-out forwards;
+  --animate-eq: eq 0.9s ease-in-out infinite;
+  --animate-fade-in: fade-in 0.25s ease-out both;
+  --animate-pulse-ring: pulse-ring 1.8s ease-out infinite;
+
+  @keyframes float-up {
+    0% {
+      transform: translateY(0) scale(0.7);
+      opacity: 0;
+    }
+    12% {
+      transform: translateY(-14px) scale(1.15);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-220px) scale(1);
+      opacity: 0;
+    }
+  }
+  @keyframes eq {
+    0%,
+    100% {
+      transform: scaleY(0.35);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes pulse-ring {
+    0% {
+      box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.55);
+    }
+    100% {
+      box-shadow: 0 0 0 18px rgba(168, 85, 247, 0);
+    }
+  }
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: var(--color-bg);
+}
+
+body {
+  min-height: 100dvh;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(168, 85, 247, 0.12), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(236, 72, 153, 0.08), transparent 55%),
+    var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #c084fc, #f472b6 50%, #fb923c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, #a855f7, #ec4899 55%, #f97316);
+}
+
+.glow {
+  box-shadow: 0 0 120px -30px rgba(168, 85, 247, 0.55);
+}
+
+/* Thin, accessible range inputs used for seek + volume. */
+input[type='range'].slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--color-accent) 0%,
+    var(--color-accent) var(--value, 0%),
+    var(--color-border-strong) var(--value, 0%),
+    var(--color-border-strong) 100%
+  );
+  outline: none;
+  cursor: pointer;
+}
+input[type='range'].slider:disabled {
+  cursor: default;
+}
+input[type='range'].slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid var(--color-accent);
+  transition: transform 0.15s ease;
+}
+input[type='range'].slider:hover::-webkit-slider-thumb,
+input[type='range'].slider:focus-visible::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+input[type='range'].slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid var(--color-accent);
+}
+
+/* Subtle custom scrollbars for panels. */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
