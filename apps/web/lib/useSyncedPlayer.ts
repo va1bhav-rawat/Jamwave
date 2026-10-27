@@ -43,6 +43,17 @@ const STATE_NAMES: Record<number, string> = {
   5: 'cued',
 };
 
+/**
+ * Move a paused player to the room's paused position.
+ * Only call this while the player reports PAUSED: YouTube's seekTo keeps a paused
+ * player paused, but starts playback from any other state (playing, cued, ended).
+ */
+function alignPaused(player: YT.Player, positionMs: number): void {
+  if (Math.abs(player.getCurrentTime() * 1000 - positionMs) > TIMING.HARD_SEEK_THRESHOLD_MS) {
+    player.seekTo(positionMs / 1000, true);
+  }
+}
+
 export interface SyncedPlayerOptions {
   volume: number;
   onEnded: (trackId: string) => void;
@@ -122,6 +133,9 @@ export function useSyncedPlayer(
                 setSync({ localDurationMs: Math.round(duration * 1000) });
               }
             }
+            if (state === yt.PlayerState.PAUSED && current?.status === 'paused') {
+              alignPaused(event.target, current.positionMs);
+            }
             if (state === yt.PlayerState.ENDED && current?.track) {
               optionsRef.current.onEnded(current.track.id);
             }
@@ -189,9 +203,15 @@ export function useSyncedPlayer(
         player.seekTo((expectedMs() + TIMING.SEEK_LOOKAHEAD_MS) / 1000, true);
       }
     } else if (status === 'paused') {
-      if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING)
+      if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) {
+        // The position is aligned once the player reports PAUSED (see onStateChange).
         player.pauseVideo();
-      player.seekTo(positionMs / 1000, true);
+      } else if (state === YT.PlayerState.PAUSED) {
+        alignPaused(player, positionMs);
+      } else {
+        // Cued / unstarted / ended: a seek would start playback, so re-cue at the position.
+        player.cueVideoById({ videoId, startSeconds: positionMs / 1000 });
+      }
     }
   }, [ready, trackId, videoId, status, updatedAt, positionMs, expectedMs, setSync]);
 
@@ -225,8 +245,9 @@ export function useSyncedPlayer(
             setSync({ needsGesture: true });
           }
         }
-      } else if (current.status === 'paused' && state === YT.PlayerState.PLAYING) {
-        player.pauseVideo();
+      } else if (current.status === 'paused') {
+        if (state === YT.PlayerState.PLAYING) player.pauseVideo();
+        else if (state === YT.PlayerState.PAUSED) alignPaused(player, current.positionMs);
       }
     }, TIMING.DRIFT_CHECK_MS);
     return () => clearInterval(interval);
