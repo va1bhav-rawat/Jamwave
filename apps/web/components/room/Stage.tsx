@@ -2,8 +2,9 @@
 
 import { Play, Search } from 'lucide-react';
 import { useRef } from 'react';
-import { jam } from '@/lib/jamClient';
-import { useRoomStore } from '@/lib/store';
+import { toast } from 'sonner';
+import { errorMessage, jam } from '@/lib/jamClient';
+import { selectCanControl, useRoomStore } from '@/lib/store';
 import { useSyncedPlayer } from '@/lib/useSyncedPlayer';
 import { cn } from '@/lib/utils';
 import { Avatar } from './Avatar';
@@ -22,6 +23,21 @@ export function Stage() {
     volume,
     onEnded: jam.reportEnded,
     onError: jam.reportError,
+    // A click on YouTube's own play/pause acts like our button: it pauses/plays for everyone.
+    onUserToggle: (action) => {
+      if (!selectCanControl(useRoomStore.getState())) {
+        toast(
+          action === 'pause'
+            ? 'Only the host can pause this jam'
+            : 'Only the host can resume this jam',
+        );
+        return false;
+      }
+      (action === 'pause' ? jam.pause() : jam.play()).catch((error) =>
+        toast.error(errorMessage(error)),
+      );
+      return true;
+    },
   });
   const track = playback?.track ?? null;
   const playing = playback?.status === 'playing';
