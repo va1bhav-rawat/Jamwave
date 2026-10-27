@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { errorMessage, jam } from '@/lib/jamClient';
 import { selectCanControl, useRoomStore } from '@/lib/store';
 import { useSyncedPlayer } from '@/lib/useSyncedPlayer';
+import { useWakeLock } from '@/lib/useWakeLock';
 import { cn } from '@/lib/utils';
 import { Avatar } from './Avatar';
 import { Equalizer } from './Equalizer';
@@ -38,9 +39,15 @@ export function Stage() {
       );
       return true;
     },
+    onCatchUp: () =>
+      toast('Back in sync', {
+        id: 'catch-up',
+        description: 'Your browser pauses YouTube while Jamwave is in the background.',
+      }),
   });
   const track = playback?.track ?? null;
   const playing = playback?.status === 'playing';
+  useWakeLock(playing);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-black">

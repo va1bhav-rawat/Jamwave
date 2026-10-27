@@ -70,6 +70,8 @@ export interface SyncedPlayerOptions {
    * Return true if the action is being sent to the room; false to snap back to the room state.
    */
   onUserToggle: (action: 'play' | 'pause') => boolean;
+  /** The page came back to the foreground and the player had been paused by the browser. */
+  onCatchUp?: () => void;
 }
 
 export interface SyncedPlayer {
@@ -306,6 +308,8 @@ export function useSyncedPlayer(
           }
           stalledTicks.current = 0;
         } else if (state !== YT.PlayerState.BUFFERING) {
+          // Mobile browsers pause hidden pages and refuse to restart them; catch up on return instead.
+          if (document.visibilityState !== 'visible') return;
           stalledTicks.current += 1;
           if (stalledTicks.current === 2) {
             markCommand();
@@ -326,6 +330,37 @@ export function useSyncedPlayer(
     }, TIMING.DRIFT_CHECK_MS);
     return () => clearInterval(interval);
   }, [ready, expectedMs, setSync, markCommand]);
+
+  // Back from another app or a locked screen: jump straight to the live position.
+  useEffect(() => {
+    if (!ready) return;
+    const catchUp = () => {
+      if (document.visibilityState !== 'visible') return;
+      const player = playerRef.current;
+      const current = playbackRef.current;
+      if (!player || !current?.track || loadedTrackRef.current !== current.track.id) return;
+      if (current.status !== 'playing') return;
+      try {
+        const state = player.getPlayerState();
+        if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) return;
+        holdUntil.current = 0;
+        stalledTicks.current = 0;
+        markCommand();
+        player.seekTo((expectedMs() + TIMING.SEEK_LOOKAHEAD_MS) / 1000, true);
+        player.playVideo();
+        // If the browser still blocks playback, the drift loop shows "Tap to listen along".
+        if (hasPlayed.current) optionsRef.current.onCatchUp?.();
+      } catch {
+        // ignore
+      }
+    };
+    document.addEventListener('visibilitychange', catchUp);
+    window.addEventListener('pageshow', catchUp);
+    return () => {
+      document.removeEventListener('visibilitychange', catchUp);
+      window.removeEventListener('pageshow', catchUp);
+    };
+  }, [ready, expectedMs, markCommand]);
 
   // Volume.
   useEffect(() => {
