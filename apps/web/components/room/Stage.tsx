@@ -1,10 +1,11 @@
 'use client';
 
-import { Play, Search } from 'lucide-react';
-import { useRef } from 'react';
+import { Maximize, Play, Search, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage, jam } from '@/lib/jamClient';
 import { selectCanControl, useRoomStore } from '@/lib/store';
+import { useIsIOS, useMediaQuery } from '@/lib/useBrowser';
 import { useSyncedPlayer } from '@/lib/useSyncedPlayer';
 import { useWakeLock } from '@/lib/useWakeLock';
 import { cn } from '@/lib/utils';
@@ -20,8 +21,11 @@ export function Stage() {
     return s.snapshot?.participants.find((p) => p.id === id) ?? null;
   });
   const hostRef = useRef<HTMLDivElement>(null);
+  // Touch devices get YouTube's own controls: its fullscreen button is the way into picture-in-picture.
+  const coarse = useMediaQuery('(pointer: coarse)');
   const { resume } = useSyncedPlayer(hostRef, playback, {
     volume,
+    nativeControls: coarse,
     onEnded: jam.reportEnded,
     onError: jam.reportError,
     // A click on YouTube's own play/pause acts like our button: it pauses/plays for everyone.
@@ -39,10 +43,20 @@ export function Stage() {
       );
       return true;
     },
+    onUserSeek: (positionMs) => {
+      if (!selectCanControl(useRoomStore.getState())) {
+        toast('Only the host can seek this jam');
+        return false;
+      }
+      jam.seek(positionMs).catch((error) => toast.error(errorMessage(error)));
+      return true;
+    },
     onCatchUp: () =>
       toast('Back in sync', {
         id: 'catch-up',
-        description: 'Your browser pauses YouTube while Jamwave is in the background.',
+        description: coarse
+          ? 'YouTube pauses when Jamwave is hidden. Use its fullscreen button, then Home, to keep listening.'
+          : 'Your browser pauses YouTube while Jamwave is in the background.',
       }),
   });
   const track = playback?.track ?? null;
@@ -68,6 +82,8 @@ export function Stage() {
           className="absolute inset-0 [&>div]:h-full [&>div]:w-full [&>iframe]:h-full [&>iframe]:w-full"
         />
       </div>
+
+      {coarse && track ? <PipHint /> : null}
 
       {!track ? (
         <div className="flex aspect-video min-h-[200px] flex-col items-center justify-center gap-3 bg-gradient-to-br from-accent/15 via-bg to-accent-2/10 px-6 text-center">
@@ -111,5 +127,45 @@ export function Stage() {
         </div>
       </div>
     </section>
+  );
+}
+
+const PIP_HINT_KEY = 'jamwave.pipHintDismissed';
+
+/** On phones: YouTube's fullscreen button, then Home, keeps the video playing in a small window. */
+function PipHint() {
+  const isIOS = useIsIOS();
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(PIP_HINT_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  if (dismissed) return null;
+  const dismiss = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem(PIP_HINT_KEY, '1');
+    } catch {
+      // ignore
+    }
+  };
+  return (
+    <div className="flex items-center gap-2 border-t border-border bg-surface/40 px-4 py-2 text-xs text-fg-muted">
+      <Maximize className="h-3.5 w-3.5 shrink-0" />
+      <span className="min-w-0 flex-1">
+        Keep listening in other apps: tap fullscreen in the video, then{' '}
+        {isIOS ? 'swipe up to go Home' : 'press Home'}. The video keeps playing in a small window.
+      </span>
+      <button
+        type="button"
+        aria-label="Dismiss"
+        onClick={dismiss}
+        className="shrink-0 rounded-full p-1 hover:bg-surface-hover"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }

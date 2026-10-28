@@ -9,6 +9,7 @@
 - [ ] Deploy web (Vercel) + server (Fly.io/Railway), register `jamwave.app`
 - [ ] Create YouTube API key, submit quota extension / compliance audit
 - [ ] Real-device pass: iOS Safari, Android Chrome, desktop browsers
+- [ ] Picture-in-picture on phones: YouTube controls on touch devices, PiP hint, seek forwarding (device results in ARCHITECTURE.md)
 
 ## Phase 2 — Keep & return
 

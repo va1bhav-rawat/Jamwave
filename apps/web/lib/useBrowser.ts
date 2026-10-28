@@ -50,3 +50,42 @@ export function useHudVisible(): boolean {
     () => false,
   );
 }
+
+const subscribeVisibility = (callback: () => void) => {
+  document.addEventListener('visibilitychange', callback);
+  return () => document.removeEventListener('visibilitychange', callback);
+};
+
+/** document.visibilityState, kept current ('visible' on the server). */
+export function useDocumentVisibility(): DocumentVisibilityState {
+  return useSyncExternalStore(
+    subscribeVisibility,
+    () => document.visibilityState,
+    () => 'visible',
+  );
+}
+
+const subscribeFullscreen = (callback: () => void) => {
+  document.addEventListener('fullscreenchange', callback);
+  return () => document.removeEventListener('fullscreenchange', callback);
+};
+
+/** Whether something on the page (for example the YouTube iframe) is in fullscreen. */
+export function useFullscreenActive(): boolean {
+  return useSyncExternalStore(
+    subscribeFullscreen,
+    () => document.fullscreenElement !== null,
+    () => false,
+  );
+}
+
+/** iPhone or iPad: WebKit only, no element fullscreen, the native video player does picture-in-picture. */
+export function useIsIOS(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () =>
+      /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
+    () => false,
+  );
+}

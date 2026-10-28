@@ -99,6 +99,44 @@ create ──► active ──(last socket drops)──► empty ──(10 min)�
 
 Host handoff picks the earliest-joined connected participant (or the earliest disconnected one if nobody is connected).
 
+## Picture-in-picture on phones
+
+Mobile browsers pause the YouTube embed when the tab is hidden, and YouTube's policies forbid a hidden
+("background") player. Picture-in-picture keeps the player visible in a floating window while the user
+is in another app, so it is the one route that works within the rules.
+
+How it has to work, and why:
+
+- **The fullscreen request must come from inside the embed.** Chromium's "effectively fullscreen"
+  detector (`media_custom_controls_fullscreen_detector.cc`), which drives Android's automatic PiP on
+  Home, only looks at the fullscreen element of the video's _own_ document. Jamwave calling
+  `requestFullscreen()` on its container does nothing for the cross-origin YouTube iframe.
+- **iPhone has no element fullscreen at all**; only the native video player can go fullscreen, and
+  only its owner document can trigger it. From native fullscreen, swiping Home enters PiP when the
+  system setting "Start PiP Automatically" is on.
+- Therefore touch devices get YouTube's own controls (`controls=1`, `fs=1`); desktop keeps
+  `controls=0`. The YouTube iframe already carries `allowfullscreen` and `allow="picture-in-picture"`.
+
+Living with YouTube's controls in a synced room (`apps/web/lib/useSyncedPlayer.ts`):
+
+- Play/pause clicks are forwarded to the room through `onUserToggle` (echo-suppressed with
+  `COMMAND_ECHO_MS`, held for `USER_HOLD_MS` until the server confirms).
+- Scrubs are detected in the drift loop as a position jump > `TIMING.SEEK_JUMP_MS` that was not caused
+  by a Jamwave command and still holds (within `SEEK_CONFIRM_MS`) on the next check. Controllers'
+  scrubs become `playback:seek`; others snap back with a toast. Any new room snapshot clears the
+  pending state, so a server-side seek never looks like a user seek.
+- While hidden (PiP), timers are throttled; the stalled-restart logic is skipped and drift is
+  corrected on the next tick or immediately when the page becomes visible again.
+
+Device results (fill in from `apps/web/app/dev/pip` spike):
+
+| Platform / browser         | PiP on Home | Keeps playing | API commands while hidden | Notes |
+| -------------------------- | ----------- | ------------- | ------------------------- | ----- |
+| Android / Chrome           | pending     | pending       | pending                   |       |
+| Android / Samsung Internet | pending     | pending       | pending                   |       |
+| iPhone / Safari            | pending     | pending       | pending                   |       |
+| iPhone / Chrome (WebKit)   | pending     | pending       | pending                   |       |
+
 ## YouTube quota strategy
 
 - `search.list` costs 100 units; the default quota allows 100 searches/day. The provider keeps a global per-day counter (`SEARCH_DAILY_CAP`, Pacific-time reset like Google's) and a 24 h LRU cache keyed by normalized query.

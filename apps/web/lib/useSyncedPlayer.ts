@@ -70,8 +70,18 @@ export interface SyncedPlayerOptions {
    * Return true if the action is being sent to the room; false to snap back to the room state.
    */
   onUserToggle: (action: 'play' | 'pause') => boolean;
+  /**
+   * The viewer scrubbed YouTube's own seek bar (only possible with `nativeControls`).
+   * Return true if the seek is being sent to the room; false to snap back to the room position.
+   */
+  onUserSeek?: (positionMs: number) => boolean;
   /** The page came back to the foreground and the player had been paused by the browser. */
   onCatchUp?: () => void;
+  /**
+   * Show YouTube's own controls. Phones need them for YouTube's fullscreen button, which is the
+   * only way into picture-in-picture for an embedded player. Read once when the player is created.
+   */
+  nativeControls?: boolean;
 }
 
 export interface SyncedPlayer {
@@ -102,6 +112,10 @@ export function useSyncedPlayer(
   const holdUntil = useRef(0);
   /** Whether the loaded track has actually played here (autoplay-blocked players never have). */
   const hasPlayed = useRef(false);
+  /** Drift at the previous check, to spot position jumps made in the player's own UI. */
+  const lastDrift = useRef<number | null>(null);
+  /** A jump seen once; it counts as a user seek only if it is still there on the next check. */
+  const pendingSeek = useRef<number | null>(null);
   const setSync = useRoomStore((s) => s.setSync);
 
   // Keep the latest props reachable from timers and player callbacks.
@@ -118,6 +132,25 @@ export function useSyncedPlayer(
   const markCommand = useCallback(() => {
     lastCommandAt.current = Date.now();
   }, []);
+
+  const handleUserSeek = useCallback(
+    (player: YT.Player, positionMs: number) => {
+      if (optionsRef.current.onUserSeek?.(positionMs)) {
+        holdUntil.current = Date.now() + USER_HOLD_MS;
+        return;
+      }
+      // Not allowed to seek the jam: put this player back at the room position.
+      const current = playbackRef.current;
+      if (!current) return;
+      markCommand();
+      if (current.status === 'playing') {
+        player.seekTo((expectedMs() + TIMING.SEEK_LOOKAHEAD_MS) / 1000, true);
+      } else if (player.getPlayerState() === YT.PlayerState.PAUSED) {
+        player.seekTo(current.positionMs / 1000, true);
+      }
+    },
+    [expectedMs, markCommand],
+  );
 
   // Create the player once.
   useEffect(() => {
@@ -149,7 +182,8 @@ export function useSyncedPlayer(
         height: '100%',
         playerVars: {
           autoplay: 0,
-          controls: 0,
+          controls: optionsRef.current.nativeControls ? 1 : 0,
+          fs: optionsRef.current.nativeControls ? 1 : 0,
           disablekb: 1,
           rel: 0,
           playsinline: 1,
@@ -194,7 +228,12 @@ export function useSyncedPlayer(
               }
             }
             if (state === yt.PlayerState.PAUSED && current?.status === 'paused') {
-              if (alignPaused(event.target, current.positionMs)) markCommand();
+              // A big jump made by the viewer is left for the drift loop to judge as a seek.
+              const jumped =
+                isUserAction &&
+                Math.abs(event.target.getCurrentTime() * 1000 - current.positionMs) >
+                  TIMING.SEEK_JUMP_MS;
+              if (!jumped && alignPaused(event.target, current.positionMs)) markCommand();
             }
             if (state === yt.PlayerState.ENDED && current?.track) {
               optionsRef.current.onEnded(current.track.id);
@@ -233,8 +272,10 @@ export function useSyncedPlayer(
   useEffect(() => {
     const player = playerRef.current;
     if (!ready || !player) return;
-    // A new room state arrived: it wins over any pending click inside the video.
+    // A new room state arrived: it wins over any pending click or seek inside the video.
     holdUntil.current = 0;
+    lastDrift.current = null;
+    pendingSeek.current = null;
     if (!trackId || !videoId) {
       if (loadedTrackRef.current !== null) {
         try {
@@ -284,52 +325,86 @@ export function useSyncedPlayer(
     }
   }, [ready, trackId, videoId, status, updatedAt, positionMs, expectedMs, setSync, markCommand]);
 
+  // One sync check: correct drift, restart a stalled player, and spot seeks made in YouTube's UI.
+  const checkDrift = useCallback(() => {
+    const player = playerRef.current;
+    const current = playbackRef.current;
+    if (!player || !current?.track || loadedTrackRef.current !== current.track.id) return;
+    if (Date.now() < holdUntil.current) return;
+    let state: number;
+    try {
+      state = player.getPlayerState();
+    } catch {
+      return;
+    }
+    // Position changes this soon after our own command, or while hidden, are never user seeks.
+    const quiet =
+      document.visibilityState === 'visible' &&
+      Date.now() - lastCommandAt.current > COMMAND_ECHO_MS;
+    if (current.status === 'playing') {
+      if (state === YT.PlayerState.PLAYING) {
+        const drift = player.getCurrentTime() * 1000 - expectedMs();
+        setSync({ drift: Math.round(drift) });
+        stalledTicks.current = 0;
+        const previous = lastDrift.current;
+        lastDrift.current = drift;
+        if (pendingSeek.current !== null) {
+          const pending = pendingSeek.current;
+          pendingSeek.current = null;
+          if (Math.abs(drift - pending) <= TIMING.SEEK_CONFIRM_MS) {
+            handleUserSeek(player, player.getCurrentTime() * 1000);
+            return;
+          }
+          // The jump did not hold (a glitch): fall through to the normal correction.
+        } else if (quiet && previous !== null && Math.abs(drift - previous) > TIMING.SEEK_JUMP_MS) {
+          // Wait one more check before treating the jump as a seek.
+          pendingSeek.current = drift;
+          return;
+        }
+        if (driftAction(drift) === 'seek') {
+          markCommand();
+          player.seekTo((expectedMs() + TIMING.SEEK_LOOKAHEAD_MS) / 1000, true);
+        }
+      } else if (state !== YT.PlayerState.BUFFERING) {
+        // Mobile browsers pause hidden pages and refuse to restart them; catch up on return instead.
+        if (document.visibilityState !== 'visible') return;
+        stalledTicks.current += 1;
+        if (stalledTicks.current === 2) {
+          markCommand();
+          player.seekTo(expectedMs() / 1000, true);
+          player.playVideo();
+        } else if (stalledTicks.current >= 4) {
+          setSync({ needsGesture: true });
+        }
+      }
+    } else if (current.status === 'paused') {
+      if (state === YT.PlayerState.PLAYING) {
+        markCommand();
+        player.pauseVideo();
+      } else if (state === YT.PlayerState.PAUSED) {
+        const offset = player.getCurrentTime() * 1000 - current.positionMs;
+        if (quiet && Math.abs(offset) > TIMING.SEEK_JUMP_MS) {
+          const pending = pendingSeek.current;
+          pendingSeek.current = null;
+          if (pending !== null && Math.abs(offset - pending) <= TIMING.SEEK_CONFIRM_MS) {
+            handleUserSeek(player, player.getCurrentTime() * 1000);
+          } else {
+            pendingSeek.current = offset;
+          }
+        } else {
+          pendingSeek.current = null;
+          if (alignPaused(player, current.positionMs)) markCommand();
+        }
+      }
+    }
+  }, [expectedMs, setSync, markCommand, handleUserSeek]);
+
   // Drift loop.
   useEffect(() => {
     if (!ready) return;
-    const interval = setInterval(() => {
-      const player = playerRef.current;
-      const current = playbackRef.current;
-      if (!player || !current?.track || loadedTrackRef.current !== current.track.id) return;
-      if (Date.now() < holdUntil.current) return;
-      let state: number;
-      try {
-        state = player.getPlayerState();
-      } catch {
-        return;
-      }
-      if (current.status === 'playing') {
-        if (state === YT.PlayerState.PLAYING) {
-          const drift = player.getCurrentTime() * 1000 - expectedMs();
-          setSync({ drift: Math.round(drift) });
-          if (driftAction(drift) === 'seek') {
-            markCommand();
-            player.seekTo((expectedMs() + TIMING.SEEK_LOOKAHEAD_MS) / 1000, true);
-          }
-          stalledTicks.current = 0;
-        } else if (state !== YT.PlayerState.BUFFERING) {
-          // Mobile browsers pause hidden pages and refuse to restart them; catch up on return instead.
-          if (document.visibilityState !== 'visible') return;
-          stalledTicks.current += 1;
-          if (stalledTicks.current === 2) {
-            markCommand();
-            player.seekTo(expectedMs() / 1000, true);
-            player.playVideo();
-          } else if (stalledTicks.current >= 4) {
-            setSync({ needsGesture: true });
-          }
-        }
-      } else if (current.status === 'paused') {
-        if (state === YT.PlayerState.PLAYING) {
-          markCommand();
-          player.pauseVideo();
-        } else if (state === YT.PlayerState.PAUSED && alignPaused(player, current.positionMs)) {
-          markCommand();
-        }
-      }
-    }, TIMING.DRIFT_CHECK_MS);
+    const interval = setInterval(checkDrift, TIMING.DRIFT_CHECK_MS);
     return () => clearInterval(interval);
-  }, [ready, expectedMs, setSync, markCommand]);
+  }, [ready, checkDrift]);
 
   // Back from another app or a locked screen: jump straight to the live position.
   useEffect(() => {
@@ -342,7 +417,14 @@ export function useSyncedPlayer(
       if (current.status !== 'playing') return;
       try {
         const state = player.getPlayerState();
-        if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) return;
+        // Fresh baseline: nothing that happened while hidden should look like a user seek.
+        lastDrift.current = null;
+        pendingSeek.current = null;
+        if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) {
+          // Still playing (e.g. picture-in-picture): correct drift now, not at the next tick.
+          checkDrift();
+          return;
+        }
         holdUntil.current = 0;
         stalledTicks.current = 0;
         markCommand();
@@ -360,7 +442,7 @@ export function useSyncedPlayer(
       document.removeEventListener('visibilitychange', catchUp);
       window.removeEventListener('pageshow', catchUp);
     };
-  }, [ready, expectedMs, markCommand]);
+  }, [ready, expectedMs, markCommand, checkDrift]);
 
   // Volume.
   useEffect(() => {

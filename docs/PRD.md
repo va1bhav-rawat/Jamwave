@@ -14,7 +14,7 @@ A free, browser-based jam session: one link, everyone hears the same song at the
 
 - Accounts, saved playlists, listening history
 - Spotify / Apple Music integration (Spotify's API is closed to free public apps as of 2026)
-- Native mobile apps, background audio on phones
+- Native mobile apps; background audio with the screen off (picture-in-picture while using other apps is supported where the browser offers it)
 - Voice chat, video chat
 - Public discovery of rooms
 
