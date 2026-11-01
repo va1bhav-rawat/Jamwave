@@ -114,6 +114,10 @@ export default function PipSpikePage() {
       <ol className="list-decimal space-y-1 pl-5 text-fg-muted">
         <li>Press play, then tap YouTube&apos;s fullscreen button inside the video.</li>
         <li>Press Home (Android) or swipe up to Home (iPhone).</li>
+        <li>
+          Then try the two &quot;Fullscreen via Jamwave&quot; buttons instead of YouTube&apos;s icon
+          and press Home again: does a floating window still appear?
+        </li>
         <li>Come back and read the log below.</li>
       </ol>
       <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
@@ -133,6 +137,36 @@ export default function PipSpikePage() {
         <dd>{playerState}</dd>
       </dl>
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="rounded-full border border-accent px-3 py-1.5"
+          onClick={() => {
+            const host = hostRef.current;
+            if (!host?.requestFullscreen)
+              return push('requestFullscreen not available on this browser');
+            host.requestFullscreen().then(
+              () => push('container fullscreen OK — now press Home'),
+              (error: unknown) => push(`container fullscreen failed: ${String(error)}`),
+            );
+          }}
+        >
+          Fullscreen via Jamwave (container)
+        </button>
+        <button
+          type="button"
+          className="rounded-full border border-accent px-3 py-1.5"
+          onClick={() => {
+            const iframe = hostRef.current?.querySelector('iframe');
+            if (!iframe?.requestFullscreen)
+              return push('iframe fullscreen not available on this browser');
+            iframe.requestFullscreen().then(
+              () => push('iframe fullscreen OK — now press Home'),
+              (error: unknown) => push(`iframe fullscreen failed: ${String(error)}`),
+            );
+          }}
+        >
+          Fullscreen via Jamwave (iframe)
+        </button>
         <button
           type="button"
           className="rounded-full border border-border px-3 py-1.5"
