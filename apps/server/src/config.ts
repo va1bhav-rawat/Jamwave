@@ -30,6 +30,9 @@ const envSchema = z.object({
   RECLAIM_GRACE_SECONDS: z.coerce.number().positive().default(60),
   SEARCH_RATE_PER_MINUTE: z.coerce.number().int().positive().default(10),
   SEARCH_DAILY_CAP: z.coerce.number().int().positive().default(95),
+  ROOM_CREATE_RATE_PER_MINUTE: z.coerce.number().int().positive().default(5),
+  ROOM_JOIN_RATE_PER_MINUTE: z.coerce.number().int().positive().default(30),
+  MAX_ROOMS: z.coerce.number().int().positive().default(5_000),
   LOG_LEVEL: z.string().default('info'),
 });
 
@@ -43,6 +46,10 @@ export interface Config {
   reclaimGraceMs: number;
   searchRatePerMinute: number;
   searchDailyCap: number;
+  /** Per-IP limits on creating and joining rooms (abuse protection). */
+  roomCreateRatePerMinute: number;
+  roomJoinRatePerMinute: number;
+  maxRooms: number;
   logLevel: string;
 }
 
@@ -64,6 +71,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     reclaimGraceMs: e.RECLAIM_GRACE_SECONDS * 1_000,
     searchRatePerMinute: e.SEARCH_RATE_PER_MINUTE,
     searchDailyCap: e.SEARCH_DAILY_CAP,
+    roomCreateRatePerMinute: e.ROOM_CREATE_RATE_PER_MINUTE,
+    roomJoinRatePerMinute: e.ROOM_JOIN_RATE_PER_MINUTE,
+    maxRooms: e.MAX_ROOMS,
     logLevel: e.LOG_LEVEL,
   };
 }

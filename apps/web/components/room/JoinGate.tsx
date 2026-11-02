@@ -1,16 +1,19 @@
 'use client';
 
 import { LIMITS } from '@jamwave/shared';
+import { RotateCcw } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Logo } from '@/components/brand/Logo';
 import { StartJamDialog } from '@/components/marketing/StartJamDialog';
+import { WakingServerHint } from '@/components/marketing/WakingServerHint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { errorMessage, joinRoom } from '@/lib/jamClient';
+import { session } from '@/lib/session';
 import { useRoomStore, type ClientError, type RoomStatus } from '@/lib/store';
-import { useStoredNickname } from '@/lib/useBrowser';
+import { useLastQueue, useStoredNickname } from '@/lib/useBrowser';
 
 export function JoinGate({
   code,
@@ -22,10 +25,18 @@ export function JoinGate({
   error: ClientError | null;
 }) {
   const stored = useStoredNickname();
+  const attempts = useRoomStore((s) => s.connectAttempts);
+  const saved = useLastQueue();
   const [typed, setTyped] = useState<string | null>(null);
   const name = typed ?? stored;
   const busy = status === 'connecting' || status === 'joining';
   const gone = error?.code === 'ROOM_NOT_FOUND';
+  const seed = gone && saved && saved.code === code && saved.tracks.length > 0 ? saved : null;
+
+  // An ended jam has no business in "Jump back in".
+  useEffect(() => {
+    if (gone) session.forgetJam(code);
+  }, [gone, code]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -50,12 +61,26 @@ export function JoinGate({
               Jam <span className="font-mono text-fg">{code}</span> is no longer running. Jams close
               ten minutes after the last person leaves.
             </p>
+            {seed ? (
+              <p className="mt-2 text-sm text-fg-subtle">
+                Its queue of {seed.tracks.length} song{seed.tracks.length === 1 ? '' : 's'} is saved
+                on this device. Rebuild it and share the new link.
+              </p>
+            ) : null}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <StartJamDialog>
-                <Button size="lg" className="flex-1">
-                  Start a new jam
-                </Button>
-              </StartJamDialog>
+              {seed ? (
+                <StartJamDialog seed={seed.tracks} seedName={seed.name}>
+                  <Button size="lg" className="flex-1">
+                    <RotateCcw className="h-4 w-4" /> Rebuild this jam
+                  </Button>
+                </StartJamDialog>
+              ) : (
+                <StartJamDialog>
+                  <Button size="lg" className="flex-1">
+                    Start a new jam
+                  </Button>
+                </StartJamDialog>
+              )}
               <Button asChild variant="secondary" size="lg" className="flex-1">
                 <Link href="/join">Join another</Link>
               </Button>
@@ -98,6 +123,7 @@ export function JoinGate({
                     ? 'Joining…'
                     : 'Join the jam'}
               </Button>
+              {busy ? <WakingServerHint attempts={attempts} /> : null}
             </form>
             <p className="mt-4 text-center text-xs text-fg-subtle">
               Free, no account needed. Music plays through YouTube.

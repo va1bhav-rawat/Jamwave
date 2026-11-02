@@ -13,6 +13,7 @@ import type {
   SearchQueryPayload,
   SearchResolvePayload,
   TimePingPayload,
+  TrackDurationPayload,
   TrackEndedPayload,
   TrackErrorPayload,
 } from './schemas';
@@ -33,6 +34,7 @@ export type ErrorCode =
   | 'SEARCH_BUDGET_EXHAUSTED'
   | 'UNSUPPORTED_URL'
   | 'NOT_FOUND'
+  | 'SERVER_BUSY'
   | 'INTERNAL';
 
 export interface ErrorPayload {
@@ -85,6 +87,8 @@ export interface ClientToServerEvents {
   'vote:skip': (ack?: AckFn<SkipVoteResult>) => void;
   'track:ended': (payload: TrackEndedPayload) => void;
   'track:error': (payload: TrackErrorPayload) => void;
+  /** The player learned the length of a track the catalogue did not know (keyless oEmbed). */
+  'track:duration': (payload: TrackDurationPayload) => void;
 
   'chat:send': (payload: ChatSendPayload, ack?: AckFn<null>) => void;
   'reaction:send': (payload: ReactionSendPayload) => void;

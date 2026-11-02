@@ -1,6 +1,7 @@
 import {
   playbackPlaySchema,
   playbackSeekSchema,
+  trackDurationSchema,
   trackEndedSchema,
   trackErrorSchema,
 } from '@jamwave/shared';
@@ -88,6 +89,18 @@ export function registerPlaybackHandlers(ctx: HandlerContext, socket: AppSocket)
       const input = parse(trackEndedSchema, payload);
       if (membership.room.onTrackEnded(input.trackId)) {
         ctx.manager.commit(membership.room, 'track-ended');
+      }
+    }),
+  );
+
+  socket.on('track:duration', (payload) =>
+    attempt(ctx, () => {
+      const membership = requireMembership(ctx, socket);
+      if (!isTrustedReporter(membership)) return;
+      const input = parse(trackDurationSchema, payload);
+      if (membership.room.setTrackDuration(input.trackId, input.durationMs)) {
+        // Everyone gets a real progress bar, and the server now owns the track end.
+        ctx.manager.commit(membership.room, 'playback');
       }
     }),
   );

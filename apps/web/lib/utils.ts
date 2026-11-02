@@ -1,3 +1,4 @@
+import type { SearchResult, Track } from '@jamwave/shared';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -32,6 +33,22 @@ export function initials(name: string): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('');
+}
+
+/** Strip queue bookkeeping so a track can be queued again (in this or another jam). */
+export function trackToSearchResult(track: Track): SearchResult {
+  const { provider, providerId, title, artist, thumbnailUrl, durationMs } = track;
+  return { provider, providerId, title, artist, thumbnailUrl, durationMs };
+}
+
+/** "just now", "5 min ago", "3 h ago", "yesterday". */
+export function timeAgo(ms: number, now: number = Date.now()): string {
+  const minutes = Math.round((now - ms) / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  return 'yesterday';
 }
 
 export function looksLikeUrl(input: string): boolean {

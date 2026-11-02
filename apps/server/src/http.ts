@@ -50,6 +50,7 @@ export function createRequestHandler(deps: HttpDeps) {
         ok: true,
         uptimeMs: Date.now() - deps.startedAt,
         ...deps.manager.stats(),
+        metrics: deps.manager.metrics,
         search: { enabled: deps.provider.searchEnabled, ...usage },
       });
       return;

@@ -30,6 +30,9 @@ export function RoomClient({ code }: { code: string }) {
   const endedReason = useRoomStore((s) => s.endedReason);
   const unread = useRoomStore((s) => s.unread);
   const peopleCount = useRoomStore((s) => s.snapshot?.participants.length ?? 0);
+  const roomName = useRoomStore((s) => s.snapshot?.settings.name ?? '');
+  const nowPlaying = useRoomStore((s) => s.snapshot?.playback.track?.title ?? null);
+  const paused = useRoomStore((s) => s.snapshot?.playback.status === 'paused');
   const setChatVisible = useRoomStore((s) => s.setChatVisible);
   const setVolume = useRoomStore((s) => s.setVolume);
   const setVideoSize = useRoomStore((s) => s.setVideoSize);
@@ -60,7 +63,17 @@ export function RoomClient({ code }: { code: string }) {
     setChatVisible(isDesktop ? sidebarTab === 'chat' : mobileTab === 'chat');
   }, [isDesktop, sidebarTab, mobileTab, setChatVisible]);
 
-  if (status === 'ended') return <RoomEnded reason={endedReason} />;
+  // The browser tab tells you what is playing, like any music app would.
+  useEffect(() => {
+    if (!joined) return;
+    const base = roomName ? `${roomName} · Jamwave` : 'Jamwave';
+    document.title = nowPlaying ? `${paused ? '⏸' : '▶'} ${nowPlaying} · ${base}` : base;
+    return () => {
+      document.title = 'Jamwave';
+    };
+  }, [joined, roomName, nowPlaying, paused]);
+
+  if (status === 'ended') return <RoomEnded reason={endedReason} code={code} />;
   if (!joined) return <JoinGate code={code} status={status} error={error} />;
 
   const tabs: { id: MobileTab; label: string; icon: typeof ListMusic; badge?: number }[] = [

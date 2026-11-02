@@ -13,8 +13,11 @@ Music plays through YouTube's official embedded player, so the catalogue is enor
 - Play / pause / seek / skip (host-only or everyone, host decides) and majority vote-to-skip
 - Participants list, host handoff on disconnect, seat reclaim on refresh
 - Chat and floating emoji reactions
-- Rooms live in memory and expire 10 minutes after the last listener leaves
-- Mobile-first dark UI; landing page, privacy and terms pages, rich link previews
+- Rooms live in memory and expire 10 minutes after the last listener leaves; the queue is remembered on each device so an ended jam can be rebuilt in one tap, and recent jams are offered on the landing page
+- Server-owned track ends even for links pasted without an API key (players report the length once)
+- Mobile-first dark UI; landing page with how-it-works, comparison and FAQ (with structured data), privacy and terms pages, rich link previews, web app manifest for "Add to Home Screen", sitemap and robots
+- Abuse limits: per-IP caps on creating and joining jams, a hard cap on live rooms, per-participant chat and search limits
+- Lifetime usage counters (rooms created, joins, tracks added, peak concurrency) on `/health`
 
 ## Stack
 
@@ -57,19 +60,22 @@ Open http://localhost:3000, start a jam, then open the jam link in a second brow
 
 All variables live in one root `.env` (see `.env.example`).
 
-| Variable                 | Used by | Default                    | Notes                                                                               |
-| ------------------------ | ------- | -------------------------- | ----------------------------------------------------------------------------------- |
-| `PORT`                   | server  | `4000`                     |                                                                                     |
-| `CORS_ORIGIN`            | server  | `http://localhost:3000`    | Comma-separated browser origins                                                     |
-| `YOUTUBE_API_KEY`        | server  | —                          | Enables search and playlist import. Without it, link pasting still works via oEmbed |
-| `ROOM_EMPTY_TTL_MINUTES` | server  | `10`                       | How long an empty room survives                                                     |
-| `RECLAIM_GRACE_SECONDS`  | server  | `60`                       | Reconnect window that keeps a seat (and the host role)                              |
-| `SEARCH_RATE_PER_MINUTE` | server  | `10`                       | Per-participant search limit                                                        |
-| `SEARCH_DAILY_CAP`       | server  | `95`                       | Global `search.list` budget per day (YouTube's default quota allows 100)            |
-| `LOG_LEVEL`              | server  | `info`                     | pino level                                                                          |
-| `NEXT_PUBLIC_SOCKET_URL` | web     | `http://localhost:4000`    | Public URL of the realtime server                                                   |
-| `NEXT_PUBLIC_APP_URL`    | web     | `http://localhost:3000`    | Public URL of the web app (share links, metadata)                                   |
-| `SOCKET_INTERNAL_URL`    | web     | = `NEXT_PUBLIC_SOCKET_URL` | Server-side URL for link previews (e.g. a private network address)                  |
+| Variable                      | Used by | Default                    | Notes                                                                               |
+| ----------------------------- | ------- | -------------------------- | ----------------------------------------------------------------------------------- |
+| `PORT`                        | server  | `4000`                     |                                                                                     |
+| `CORS_ORIGIN`                 | server  | `http://localhost:3000`    | Comma-separated browser origins                                                     |
+| `YOUTUBE_API_KEY`             | server  | —                          | Enables search and playlist import. Without it, link pasting still works via oEmbed |
+| `ROOM_EMPTY_TTL_MINUTES`      | server  | `10`                       | How long an empty room survives                                                     |
+| `RECLAIM_GRACE_SECONDS`       | server  | `60`                       | Reconnect window that keeps a seat (and the host role)                              |
+| `SEARCH_RATE_PER_MINUTE`      | server  | `10`                       | Per-participant search limit                                                        |
+| `SEARCH_DAILY_CAP`            | server  | `95`                       | Global `search.list` budget per day (YouTube's default quota allows 100)            |
+| `ROOM_CREATE_RATE_PER_MINUTE` | server  | `5`                        | New jams per minute per client address                                              |
+| `ROOM_JOIN_RATE_PER_MINUTE`   | server  | `30`                       | Fresh joins per minute per client address (reclaims after a refresh are free)       |
+| `MAX_ROOMS`                   | server  | `5000`                     | Hard cap on live rooms; creation answers `SERVER_BUSY` beyond it                    |
+| `LOG_LEVEL`                   | server  | `info`                     | pino level                                                                          |
+| `NEXT_PUBLIC_SOCKET_URL`      | web     | `http://localhost:4000`    | Public URL of the realtime server                                                   |
+| `NEXT_PUBLIC_APP_URL`         | web     | `http://localhost:3000`    | Public URL of the web app (share links, metadata)                                   |
+| `SOCKET_INTERNAL_URL`         | web     | = `NEXT_PUBLIC_SOCKET_URL` | Server-side URL for link previews (e.g. a private network address)                  |
 
 ### Getting a YouTube API key
 

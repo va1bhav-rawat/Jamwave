@@ -1,6 +1,6 @@
 'use client';
 
-import { LIMITS } from '@jamwave/shared';
+import { LIMITS, type SearchResult } from '@jamwave/shared';
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
@@ -8,15 +8,28 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { createRoom, errorMessage } from '@/lib/jamClient';
+import { createRoom, errorMessage, seedQueue } from '@/lib/jamClient';
 import { session } from '@/lib/session';
+import { useRoomStore } from '@/lib/store';
+import { WakingServerHint } from './WakingServerHint';
 
-export function StartJamDialog({ children }: { children: ReactNode }) {
+export function StartJamDialog({
+  children,
+  seed,
+  seedName,
+}: {
+  children: ReactNode;
+  /** Tracks to queue up right after the jam is created (rebuilding a jam that ended). */
+  seed?: SearchResult[];
+  /** Suggested jam name when rebuilding. */
+  seedName?: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [roomName, setRoomName] = useState('');
   const [busy, setBusy] = useState(false);
+  const rebuilding = !!seed && seed.length > 0;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -25,6 +38,14 @@ export function StartJamDialog({ children }: { children: ReactNode }) {
     setBusy(true);
     try {
       const code = await createRoom(nickname, roomName);
+      if (rebuilding) {
+        try {
+          const added = await seedQueue(seed);
+          toast.success(`${added} song${added === 1 ? '' : 's'} back in the queue`);
+        } catch (error) {
+          toast.error(errorMessage(error, 'Could not restore the queue'));
+        }
+      }
       router.push(`/jam/${code}`);
     } catch (error) {
       toast.error(errorMessage(error, 'Could not start a jam'));
@@ -37,14 +58,21 @@ export function StartJamDialog({ children }: { children: ReactNode }) {
       open={open}
       onOpenChange={(next) => {
         if (busy) return;
-        if (next) setName((current) => current || session.getNickname() || '');
+        if (next) {
+          setName((current) => current || session.getNickname() || '');
+          setRoomName((current) => current || seedName || '');
+        }
         setOpen(next);
       }}
     >
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent
-        title="Start a jam"
-        description="Pick a nickname. You'll get a link and a code to share with anyone."
+        title={rebuilding ? 'Rebuild your jam' : 'Start a jam'}
+        description={
+          rebuilding
+            ? `Pick a nickname. Your ${seed.length} song${seed.length === 1 ? '' : 's'} will be queued up again, and you'll get a fresh link to share.`
+            : "Pick a nickname. You'll get a link and a code to share with anyone."
+        }
       >
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1.5">
@@ -76,10 +104,16 @@ export function StartJamDialog({ children }: { children: ReactNode }) {
           </div>
           <Button type="submit" size="lg" className="w-full" disabled={busy || !name.trim()}>
             {busy ? <Spinner className="border-white/40 border-t-white" /> : null}
-            {busy ? 'Setting up your jam…' : 'Create my jam'}
+            {busy ? 'Setting up your jam…' : rebuilding ? 'Rebuild my jam' : 'Create my jam'}
           </Button>
+          {busy ? <BusyHint /> : null}
         </form>
       </DialogContent>
     </Dialog>
   );
+}
+
+function BusyHint() {
+  const attempts = useRoomStore((s) => s.connectAttempts);
+  return <WakingServerHint attempts={attempts} />;
 }

@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { APP_URL } from './env';
-import { session } from './session';
+import { session, type RecentJam, type SavedQueue } from './session';
 
 const noopSubscribe = () => () => {};
 
@@ -18,6 +18,22 @@ export function useStoredNickname(): string {
     () => session.getNickname() ?? '',
     () => '',
   );
+}
+
+const NO_JAMS: RecentJam[] = [];
+const getRecentJams = () => {
+  const jams = session.getRecentJams();
+  return jams.length === 0 ? NO_JAMS : jams;
+};
+
+/** Jams this device joined in the last day (empty on the server and before hydration). */
+export function useRecentJams(): RecentJam[] {
+  return useSyncExternalStore(subscribeStorage, getRecentJams, () => NO_JAMS);
+}
+
+/** The last queue this device listened to, for rebuilding an ended jam. */
+export function useLastQueue(): SavedQueue | null {
+  return useSyncExternalStore(subscribeStorage, session.getLastQueue, () => null);
 }
 
 /** Hydration-safe matchMedia. */

@@ -150,6 +150,22 @@ describe('Room queue and playback', () => {
     expect(room.playback.track?.id).toBe(added[1]!.id);
   });
 
+  it('learns an unknown duration from a player, once, for the current track only', () => {
+    const { room } = makeRoom();
+    const { added } = room.addTracks([item('a', 0), item('b', 0)], by);
+    expect(room.playback.track?.durationMs).toBe(0);
+    expect(room.setTrackDuration(added[1]!.id, 200_000)).toBe(false); // not current
+    expect(room.setTrackDuration(added[0]!.id, 0)).toBe(false); // implausible
+    const version = room.version;
+    expect(room.setTrackDuration(added[0]!.id, 200_400.6)).toBe(true);
+    expect(room.playback.track?.durationMs).toBe(200_401);
+    expect(room.version).toBe(version + 1);
+    // Known durations are authoritative: a second report changes nothing.
+    expect(room.setTrackDuration(added[0]!.id, 10_000)).toBe(false);
+    expect(room.playback.track?.durationMs).toBe(200_401);
+    expect(room.snapshot().playback.track?.durationMs).toBe(200_401);
+  });
+
   it('jumps to a specific queued track', () => {
     const { room } = makeRoom();
     const { added } = room.addTracks([item('a'), item('b'), item('c')], by);

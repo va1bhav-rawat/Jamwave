@@ -31,6 +31,18 @@ export type AppSocket = Socket<
 export interface Limiters {
   search: SlidingWindowLimiter;
   chat: SlidingWindowLimiter;
+  create: SlidingWindowLimiter;
+  join: SlidingWindowLimiter;
+}
+
+/**
+ * Best-effort client address for rate limiting. Behind Render / Fly / Vercel-style proxies the
+ * real address is the first entry of `x-forwarded-for`; otherwise the socket's own address.
+ */
+export function clientIp(socket: AppSocket): string {
+  const forwarded = socket.handshake.headers['x-forwarded-for'];
+  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim();
+  return first || socket.handshake.address || 'unknown';
 }
 
 export interface HandlerContext {

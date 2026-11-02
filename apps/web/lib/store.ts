@@ -9,6 +9,7 @@ import {
 } from '@jamwave/shared';
 import { create } from 'zustand';
 import { session, type Identity } from './session';
+import { trackToSearchResult } from './utils';
 
 export type RoomStatus = 'idle' | 'connecting' | 'joining' | 'joined' | 'ended' | 'error';
 
@@ -42,6 +43,8 @@ export type VideoSize = 'auto' | 'small';
 export interface RoomStore {
   status: RoomStatus;
   connected: boolean;
+  /** Failed connection attempts in the current connect; >0 usually means a sleeping free-tier server. */
+  connectAttempts: number;
   error: ClientError | null;
   endedReason: RoomClosedReason | null;
   snapshot: RoomSnapshot | null;
@@ -56,6 +59,7 @@ export interface RoomStore {
 
   setStatus: (status: RoomStatus) => void;
   setConnected: (connected: boolean) => void;
+  setConnectAttempts: (attempts: number) => void;
   setError: (error: ClientError) => void;
   setJoined: (result: JoinResult) => void;
   applySnapshot: (snapshot: RoomSnapshot) => void;
@@ -91,9 +95,29 @@ const freshTrackSync = {
   reason: 'none',
 } satisfies Partial<SyncInfo>;
 
+/** Last persisted "what was playing" signature, so storage is only written when it changes. */
+let persistedSignature = '';
+
+/** Remember the jam and its queue on this device (recent jams list, one-tap rebuild). */
+function persist(snapshot: RoomSnapshot): void {
+  const tracks = [snapshot.playback.track, ...snapshot.queue].filter(
+    (t): t is NonNullable<typeof t> => t !== null,
+  );
+  const signature = `${snapshot.code}|${snapshot.settings.name}|${tracks.map((t) => t.id).join(',')}`;
+  if (signature === persistedSignature) return;
+  persistedSignature = signature;
+  session.rememberJam(snapshot.code, snapshot.settings.name);
+  session.saveLastQueue({
+    code: snapshot.code,
+    name: snapshot.settings.name,
+    tracks: tracks.map(trackToSearchResult),
+  });
+}
+
 export const useRoomStore = create<RoomStore>()((set, get) => ({
   status: 'idle',
   connected: false,
+  connectAttempts: 0,
   error: null,
   endedReason: null,
   snapshot: null,
@@ -108,8 +132,10 @@ export const useRoomStore = create<RoomStore>()((set, get) => ({
 
   setStatus: (status) => set({ status }),
   setConnected: (connected) => set({ connected }),
+  setConnectAttempts: (connectAttempts) => set({ connectAttempts }),
   setError: (error) => set({ error, status: 'error' }),
-  setJoined: (result) =>
+  setJoined: (result) => {
+    persist(result.snapshot);
     set({
       status: 'joined',
       error: null,
@@ -119,11 +145,13 @@ export const useRoomStore = create<RoomStore>()((set, get) => ({
       chat: result.chat,
       unread: 0,
       sync: { ...get().sync, ...freshTrackSync, needsGesture: false },
-    }),
+    });
+  },
   applySnapshot: (snapshot) => {
     const current = get().snapshot;
     if (current && current.code === snapshot.code && snapshot.version < current.version) return;
     const trackChanged = current?.playback.track?.id !== snapshot.playback.track?.id;
+    persist(snapshot);
     set({
       snapshot,
       sync: trackChanged ? { ...get().sync, ...freshTrackSync } : get().sync,
@@ -151,10 +179,15 @@ export const useRoomStore = create<RoomStore>()((set, get) => ({
     session.setVideoSize(size);
     set({ videoSize: size });
   },
-  setEnded: (reason) => set({ status: 'ended', endedReason: reason }),
+  setEnded: (reason) => {
+    const code = get().snapshot?.code;
+    if (code) session.forgetJam(code);
+    set({ status: 'ended', endedReason: reason });
+  },
   reset: () =>
     set({
       status: 'idle',
+      connectAttempts: 0,
       error: null,
       endedReason: null,
       snapshot: null,

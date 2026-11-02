@@ -1,7 +1,7 @@
 'use client';
 
 import { LIMITS, type SearchResult } from '@jamwave/shared';
-import { Check, ListPlus, Plus, Search, X } from 'lucide-react';
+import { Check, ListPlus, Plus, Search, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -12,17 +12,32 @@ import { selectCanControl, useRoomStore } from '@/lib/store';
 import { formatDuration, looksLikeUrl } from '@/lib/utils';
 import { Thumb } from './Thumb';
 
+/**
+ * One-tap starters for an empty jam. Searches are cached server-wide for a day, so after the
+ * first person taps a pick it costs no YouTube quota for anyone else.
+ */
+const QUICK_PICKS = [
+  'lofi hip hop beats to study',
+  'Bollywood hits',
+  'top hits 2026',
+  '2000s throwback',
+  'acoustic chill',
+  'workout mix',
+];
+
 export function AddTrack() {
   const canControl = useRoomStore(selectCanControl);
+  const roomIsSilent = useRoomStore(
+    (s) => !s.snapshot?.playback.track && (s.snapshot?.queue.length ?? 0) === 0,
+  );
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(() => new Set());
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const q = query.trim();
+  const find = async (raw: string) => {
+    const q = raw.trim();
     if (!q) return;
     if (!looksLikeUrl(q) && q.length < LIMITS.SEARCH_MIN) {
       setNotice(`Type at least ${LIMITS.SEARCH_MIN} characters, or paste a YouTube link.`);
@@ -43,6 +58,16 @@ export function AddTrack() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    void find(query);
+  };
+
+  const pick = (q: string) => {
+    setQuery(q);
+    void find(q);
   };
 
   const add = async (item: SearchResult, playNext = false) => {
@@ -85,6 +110,26 @@ export function AddTrack() {
         </Button>
       </form>
       {notice ? <p className="mt-2 px-1 text-sm text-fg-muted">{notice}</p> : null}
+
+      {roomIsSilent && results.length === 0 && !busy ? (
+        <div className="mt-3 px-1">
+          <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-fg-subtle">
+            <Sparkles className="h-3.5 w-3.5" /> Quick start
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {QUICK_PICKS.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => pick(q)}
+                className="rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {results.length > 0 ? (
         <div className="mt-3 animate-fade-in">

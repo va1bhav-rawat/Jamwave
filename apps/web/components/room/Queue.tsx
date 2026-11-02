@@ -18,23 +18,18 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { SearchResult, Track } from '@jamwave/shared';
+import type { Track } from '@jamwave/shared';
 import { GripVertical, Play, RotateCcw, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { errorMessage, jam } from '@/lib/jamClient';
 import { selectCanControl, selectMe, useRoomStore } from '@/lib/store';
-import { cn, formatDuration } from '@/lib/utils';
+import { cn, formatDuration, trackToSearchResult } from '@/lib/utils';
 import { Panel } from './Panel';
 import { Thumb } from './Thumb';
 
 const EMPTY: Track[] = [];
-
-function toSearchResult(track: Track): SearchResult {
-  const { provider, providerId, title, artist, thumbnailUrl, durationMs } = track;
-  return { provider, providerId, title, artist, thumbnailUrl, durationMs };
-}
 
 export function Queue() {
   const queue = useRoomStore((s) => s.snapshot?.queue ?? EMPTY);
@@ -124,7 +119,7 @@ export function Queue() {
                   aria-label="Add again"
                   onClick={() =>
                     jam
-                      .addTracks([toSearchResult(track)])
+                      .addTracks([trackToSearchResult(track)])
                       .then(() => toast.success('Added to the queue'))
                       .catch((error) => toast.error(errorMessage(error)))
                   }

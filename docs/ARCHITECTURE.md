@@ -51,6 +51,7 @@ offset = t1 − (t0 + t2) / 2
 3. Every second: `drift = player.getCurrentTime() − expected`, decided by `SyncCorrector` (shared, unit-tested). Within the current tolerance (300 ms when healthy) nothing happens. A forward seek is issued only into video the player has already buffered (`getVideoLoadedFraction`); otherwise the player keeps playing a little behind until the buffer catches up and the seek becomes free. Each stall or rebuffering seek is a "strike": the tolerance doubles (up to 2.4 s) and seeks are spaced out (5 → 20 s); a quiet minute removes a strike. Beyond 3 s behind a rebuffering seek is accepted, beyond 5 s a seek always happens. This replaces a fixed 300 ms threshold that, on slow connections, seeked into undownloaded video after every stall and produced a seek → rebuffer → seek loop (and kept resetting YouTube's quality choice).
 4. A fresh load is left alone while its buffer is growing. If nothing arrives, a bare `playVideo()` is tried (no seek: a seek restarts the fetch), then the UI shows a "Tap to listen along" button (browser blocked autoplay); the tap calls `seekTo + playVideo()` from a user gesture.
 5. `ENDED` → `track:ended`; player error → `track:error`. The server only trusts these from the host (or anyone when the host is away) and also runs its own timer at `updatedAt + duration − positionMs`.
+6. Links pasted without an API key arrive with `durationMs: 0`, so the server cannot schedule the end itself. The first time the trusted player reaches `PLAYING` it sends `track:duration`; the server stores it on the current track (once, plausible values only) and broadcasts, which arms the end timer and gives everyone a real progress bar. Without this, a host whose phone locked would leave the room stuck on the last second of such a track.
 
 ### Reconnect and identity
 
@@ -73,6 +74,7 @@ Payload schemas live in `packages/shared/src/schemas.ts`; typed signatures in `e
 | `playback:play` `{ trackId? }` / `pause` / `seek` `{ positionMs }` / `skip` | `null`                       | control                           |
 | `vote:skip`                                                                 | `{ votes, needed, skipped }` | member                            |
 | `track:ended` / `track:error` `{ trackId }`                                 | —                            | host (or anyone if host away)     |
+| `track:duration` `{ trackId, durationMs }`                                  | —                            | host (or anyone if host away)     |
 | `chat:send` `{ text }`                                                      | `null`                       | member                            |
 | `reaction:send` `{ emoji }`                                                 | —                            | member                            |
 | `time:ping` `{ t0 }`                                                        | `{ t0, t1 }`                 | anyone                            |
@@ -87,6 +89,18 @@ Payload schemas live in `packages/shared/src/schemas.ts`; typed signatures in `e
 | `server:error`  | `{ code, message }` (only for events without an ack) |
 
 "Control" = host, or anyone when `settings.everyoneControls` is true (the default).
+
+## Abuse limits
+
+`room:create` and fresh `room:join` seats are limited per client address (`x-forwarded-for` first, then the socket address) with sliding windows; reclaims after a refresh are exempt. `RoomManager` refuses new rooms beyond `MAX_ROOMS` with `SERVER_BUSY`. Chat/reactions and searches have per-participant limiters; `queue:add` is bounded by the batch and queue limits.
+
+## Usage counters
+
+`RoomManager.metrics` counts rooms created, first-time joins, tracks added and the peak number of rooms / connected listeners since the process started. `/health` exposes them: enough to answer "is anyone using this?" before a real analytics stack exists.
+
+## Device memory
+
+The browser keeps (localStorage) the last five jams it joined and the last queue it saw (`[current track, ...queue]` as `SearchResult`s). The landing page offers "Jump back in"; the ended / not-found screens offer "Rebuild this jam", which creates a fresh room and re-queues the saved tracks in batches. Nothing of this touches the server or YouTube quota.
 
 ## Room lifecycle
 

@@ -79,6 +79,8 @@ export interface SyncedPlayerOptions {
   volume: number;
   onEnded: (trackId: string) => void;
   onError: (trackId: string, code: number) => void;
+  /** The player learned the length of a track the room did not know (pasted without an API key). */
+  onDuration?: (trackId: string, durationMs: number) => void;
   /**
    * The viewer clicked play/pause inside the YouTube player itself.
    * Return true if the action is being sent to the room; false to snap back to the room state.
@@ -253,7 +255,10 @@ export function useSyncedPlayer(
               setSync({ needsGesture: false });
               const duration = event.target.getDuration();
               if (current?.track && current.track.durationMs <= 0 && duration > 0) {
-                setSync({ localDurationMs: Math.round(duration * 1000) });
+                const durationMs = Math.round(duration * 1000);
+                setSync({ localDurationMs: durationMs });
+                // Tell the room, so the server can end the track even if this tab goes away.
+                optionsRef.current.onDuration?.(current.track.id, durationMs);
               }
             }
             if (state === yt.PlayerState.PAUSED && current?.status === 'paused') {

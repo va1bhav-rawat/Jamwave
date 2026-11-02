@@ -21,6 +21,7 @@ export function registerQueueHandlers(ctx: HandlerContext, socket: AppSocket): v
         { id: participant.id, name: participant.name },
         input.playNext ?? false,
       );
+      ctx.manager.recordTracksAdded(added.length);
       ctx.manager.commit(room, 'queue');
       return { added: added.length };
     }),

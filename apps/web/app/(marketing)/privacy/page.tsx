@@ -44,9 +44,11 @@ export default function PrivacyPage() {
       <section className="mt-10 space-y-4 text-fg-muted">
         <h2 className="text-xl font-semibold text-fg">Browser storage</h2>
         <p>
-          Jamwave uses local storage for your nickname and volume, and session storage so that
-          refreshing the page keeps your seat in a jam. We do not use advertising or cross-site
-          tracking cookies.
+          Jamwave uses local storage for your nickname, volume and video size, for the codes of jams
+          you recently joined (so you can jump back in) and for the last queue you listened to (so
+          you can rebuild a jam that ended), and session storage so that refreshing the page keeps
+          your seat in a jam. All of it stays in your browser. We do not use advertising or
+          cross-site tracking cookies.
         </p>
       </section>
 

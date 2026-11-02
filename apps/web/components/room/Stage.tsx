@@ -29,6 +29,7 @@ export function Stage() {
     nativeControls: coarse,
     onEnded: jam.reportEnded,
     onError: jam.reportError,
+    onDuration: jam.reportDuration,
     // A click on YouTube's own play/pause acts like our button: it pauses/plays for everyone.
     onUserToggle: (action) => {
       if (!selectCanControl(useRoomStore.getState())) {

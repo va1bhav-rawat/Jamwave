@@ -1,4 +1,5 @@
 import {
+  LIMITS,
   normalizeRoomCode,
   type Ack,
   type ClientToServerEvents,
@@ -73,23 +74,32 @@ async function rejoin(code: string): Promise<void> {
   }
 }
 
+/**
+ * Free-tier hosts put an idle server to sleep; the first visitor pays a cold start that can run
+ * close to a minute. Each failed attempt is ~10 s, so this is roughly how long we keep trying.
+ */
+const MAX_CONNECT_ATTEMPTS = 6;
+
 /** Resolve once the socket is connected; reject after a few failed attempts. */
 export function ensureConnected(): Promise<void> {
   const s = getSocket();
   if (s.connected) return Promise.resolve();
   return new Promise((resolve, reject) => {
     let attempts = 0;
+    useRoomStore.getState().setConnectAttempts(0);
     const cleanup = () => {
       s.off('connect', onConnect);
       s.off('connect_error', onError);
     };
     const onConnect = () => {
       cleanup();
+      useRoomStore.getState().setConnectAttempts(0);
       resolve();
     };
     const onError = () => {
       attempts += 1;
-      if (attempts >= 3) {
+      useRoomStore.getState().setConnectAttempts(attempts);
+      if (attempts >= MAX_CONNECT_ATTEMPTS) {
         cleanup();
         reject(
           new JamError('OFFLINE', "Can't reach the jam server right now. Try again in a moment."),
@@ -163,6 +173,16 @@ export async function joinRoom(
   adopt(code, result);
 }
 
+/** Queue many tracks (e.g. a saved queue) in server-sized batches. Returns how many were added. */
+export async function seedQueue(items: SearchResult[]): Promise<number> {
+  let added = 0;
+  for (let i = 0; i < items.length; i += LIMITS.QUEUE_ADD_BATCH_MAX) {
+    const chunk = items.slice(i, i + LIMITS.QUEUE_ADD_BATCH_MAX);
+    added += (await jam.addTracks(chunk)).added;
+  }
+  return added;
+}
+
 export function leaveRoom(): void {
   const store = useRoomStore.getState();
   const code = store.snapshot?.code;
@@ -192,6 +212,8 @@ export const jam = {
   resolve: (url: string) => request<SearchResponse>('search:resolve', { url }),
   reportEnded: (trackId: string) => fire('track:ended', { trackId }),
   reportError: (trackId: string, code?: number) => fire('track:error', { trackId, code }),
+  reportDuration: (trackId: string, durationMs: number) =>
+    fire('track:duration', { trackId, durationMs: Math.round(durationMs) }),
 };
 
 export function errorMessage(error: unknown, fallback = 'Something went wrong'): string {

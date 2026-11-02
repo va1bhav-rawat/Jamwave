@@ -68,6 +68,16 @@ export const trackErrorSchema = z.object({
   code: z.number().int().optional(),
 });
 
+/** Plausible track lengths only: one second to one day. */
+export const trackDurationSchema = z.object({
+  trackId: z.string().min(1),
+  durationMs: z
+    .number()
+    .int()
+    .min(1_000)
+    .max(24 * 60 * 60_000),
+});
+
 export const chatSendSchema = z.object({
   text: z.string().trim().min(1).max(LIMITS.CHAT_MAX_LEN),
 });
@@ -102,6 +112,7 @@ export type PlaybackPlayPayload = z.infer<typeof playbackPlaySchema>;
 export type PlaybackSeekPayload = z.infer<typeof playbackSeekSchema>;
 export type TrackEndedPayload = z.infer<typeof trackEndedSchema>;
 export type TrackErrorPayload = z.infer<typeof trackErrorSchema>;
+export type TrackDurationPayload = z.infer<typeof trackDurationSchema>;
 export type ChatSendPayload = z.infer<typeof chatSendSchema>;
 export type ReactionSendPayload = z.infer<typeof reactionSendSchema>;
 export type RoomSettingsPayload = z.infer<typeof roomSettingsSchema>;

@@ -111,6 +111,20 @@ describe('RoomManager', () => {
     expect(room.playback.status).toBe('idle');
   });
 
+  it('schedules the track end once a player reports the duration', () => {
+    const { manager, changes } = build();
+    const { room, participant } = manager.createRoom({ hostName: 'Ana', socketId: 's1' });
+    room.addTracks([item('a', 0), item('b', 0)], { id: participant.id, name: 'Ana' });
+    manager.commit(room, 'queue');
+    vi.advanceTimersByTime(60_000);
+    expect(room.playback.track?.providerId).toBe('a'); // unknown length: nothing scheduled
+    expect(room.setTrackDuration(room.playback.track!.id, 5_000)).toBe(true);
+    manager.commit(room, 'playback');
+    vi.advanceTimersByTime(5_000 - 60_000 + 60_000 + 500);
+    expect(room.playback.track?.providerId).toBe('b');
+    expect(changes).toContain('track-ended');
+  });
+
   it('does not fire the end timer for a paused track', () => {
     const { manager } = build();
     const { room, participant } = manager.createRoom({ hostName: 'Ana', socketId: 's1' });
@@ -133,6 +147,42 @@ describe('RoomManager', () => {
     expect(manager.sweep()).toBe(1);
     expect(closed).toEqual([`${room.code}:expired`]);
     expect(manager.getRoom(room.code)).toBeUndefined();
+  });
+
+  it('counts rooms, joins, tracks and peaks', () => {
+    const { manager } = build();
+    const a = manager.createRoom({ hostName: 'Ana', socketId: 's1' });
+    manager.join({ code: a.room.code, name: 'Ben', socketId: 's2' });
+    const ben = a.room.snapshot().participants.find((p) => p.name === 'Ben')!;
+    manager.handleDisconnect(a.room.code, ben.id);
+    manager.join({
+      code: a.room.code,
+      name: 'Ben',
+      socketId: 's3',
+      reclaim: { participantId: ben.id, secret: a.room.getParticipant(ben.id)!.secret },
+    });
+    manager.createRoom({ hostName: 'Cy', socketId: 's4' });
+    manager.recordTracksAdded(3);
+    expect(manager.metrics).toEqual({
+      roomsCreated: 2,
+      joins: 1,
+      tracksAdded: 3,
+      peakRooms: 2,
+      peakConnected: 3,
+    });
+  });
+
+  it('refuses new rooms beyond the cap', () => {
+    const manager = new RoomManager({
+      maxRooms: 1,
+      onRoomChanged: () => {},
+      onRoomClosed: () => {},
+      onSystemMessage: () => {},
+    });
+    manager.createRoom({ hostName: 'Ana', socketId: 's1' });
+    expect(() => manager.createRoom({ hostName: 'Ben', socketId: 's2' })).toThrowError(
+      expect.objectContaining({ code: 'SERVER_BUSY' }),
+    );
   });
 
   it('reports stats', () => {

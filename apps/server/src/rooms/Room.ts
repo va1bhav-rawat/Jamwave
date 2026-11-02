@@ -325,6 +325,21 @@ export class Room {
     return false;
   }
 
+  /**
+   * Learn the length of the current track from a player when the catalogue did not know it
+   * (keyless oEmbed lookups return 0). Lets the server schedule the track end itself, so a
+   * host whose phone locked no longer leaves the whole room hanging on the last second.
+   */
+  setTrackDuration(trackId: string, durationMs: number): boolean {
+    const track = this.playback.track;
+    if (!track || track.id !== trackId || track.durationMs > 0) return false;
+    if (!Number.isFinite(durationMs) || durationMs <= 0) return false;
+    const updated: Track = { ...track, durationMs: Math.round(durationMs) };
+    this.playback = { ...this.playback, track: updated };
+    this.bump();
+    return true;
+  }
+
   /** Handle a client report that `trackId` finished. Ignored when stale. */
   onTrackEnded(trackId: string): boolean {
     if (this.playback.track?.id !== trackId) return false;

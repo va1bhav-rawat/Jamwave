@@ -51,7 +51,8 @@ export function PlaybackControls() {
     : 0;
   const needed = Math.floor(connected.length / 2) + 1;
   const iVoted = !!me && !!snapshot?.skipVotes.includes(me.id);
-  const voteEnabled = !!snapshot?.settings.voteSkipEnabled && !!track;
+  // Anyone who can skip outright has no use for a vote button; it is for listeners.
+  const voteEnabled = !canControl && !!snapshot?.settings.voteSkipEnabled && !!track;
 
   const run = async (action: () => Promise<unknown>) => {
     try {

@@ -21,10 +21,22 @@ export type ChangeReason =
   | 'vote'
   | 'track-ended';
 
+/** Lifetime counters since the process started: the cheapest possible product analytics. */
+export interface Metrics {
+  roomsCreated: number;
+  /** First-time joins (reclaims after a refresh are not counted). */
+  joins: number;
+  tracksAdded: number;
+  peakRooms: number;
+  peakConnected: number;
+}
+
 export interface RoomManagerOptions {
   now?: Now;
   emptyTtlMs?: number;
   reclaimGraceMs?: number;
+  /** Hard cap on live rooms; creation fails with SERVER_BUSY beyond it. */
+  maxRooms?: number;
   /** Called after every committed change; the caller broadcasts the snapshot. */
   onRoomChanged: (room: Room, reason: ChangeReason) => void;
   onRoomClosed: (room: Room, reason: RoomClosedReason) => void;
@@ -57,11 +69,20 @@ export class RoomManager {
   private readonly now: Now;
   private readonly emptyTtlMs: number;
   private readonly reclaimGraceMs: number;
+  private readonly maxRooms: number;
+  readonly metrics: Metrics = {
+    roomsCreated: 0,
+    joins: 0,
+    tracksAdded: 0,
+    peakRooms: 0,
+    peakConnected: 0,
+  };
 
   constructor(private readonly opts: RoomManagerOptions) {
     this.now = opts.now ?? Date.now;
     this.emptyTtlMs = opts.emptyTtlMs ?? TIMING.ROOM_EMPTY_TTL_MS;
     this.reclaimGraceMs = opts.reclaimGraceMs ?? TIMING.RECLAIM_GRACE_MS;
+    this.maxRooms = opts.maxRooms ?? 5_000;
   }
 
   // ---------------------------------------------------------------- lifecycle
@@ -70,11 +91,17 @@ export class RoomManager {
     room: Room;
     participant: ParticipantRecord;
   } {
+    if (this.rooms.size >= this.maxRooms) {
+      throw new AppError('SERVER_BUSY', 'Jamwave is at capacity right now. Try again in a minute.');
+    }
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
     const room = new Room(code, { name: input.roomName || `${input.hostName}'s jam` }, this.now);
     const participant = room.addParticipant(input.hostName, input.socketId);
     this.rooms.set(code, room);
+    this.metrics.roomsCreated++;
+    this.metrics.peakRooms = Math.max(this.metrics.peakRooms, this.rooms.size);
+    this.recordConnected();
     this.opts.logger?.info({ code, host: participant.name }, 'room created');
     return { room, participant };
   }
@@ -100,11 +127,14 @@ export class RoomManager {
       );
       if (participant) {
         this.clearGrace(room.code, participant.id);
+        this.recordConnected();
         this.commit(room, 'reclaim');
         return { room, participant, reclaimed: true };
       }
     }
     const participant = room.addParticipant(input.name, input.socketId);
+    this.metrics.joins++;
+    this.recordConnected();
     this.system(room, `${participant.name} joined the jam`);
     this.commit(room, 'join');
     return { room, participant, reclaimed: false };
@@ -236,6 +266,15 @@ export class RoomManager {
       connected += room.connectedCount;
     }
     return { rooms: this.rooms.size, participants, connected };
+  }
+
+  /** Count tracks queued (called by the queue handler). */
+  recordTracksAdded(count: number): void {
+    this.metrics.tracksAdded += count;
+  }
+
+  private recordConnected(): void {
+    this.metrics.peakConnected = Math.max(this.metrics.peakConnected, this.stats().connected);
   }
 
   dispose(): void {

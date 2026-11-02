@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   description:
     'Jamwave is the free way to listen to music with friends and loved ones in perfect sync. Share one link, add songs to a shared queue, chat and react — no app, no account, no subscription.',
   applicationName: 'Jamwave',
+  appleWebApp: { capable: true, title: 'Jamwave', statusBarStyle: 'black-translucent' },
   keywords: [
     'listen together',
     'free spotify jam alternative',

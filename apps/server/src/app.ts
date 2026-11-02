@@ -42,6 +42,7 @@ export function createApp({ config, logger, provider: providerOverride }: AppOpt
   const manager = new RoomManager({
     emptyTtlMs: config.roomEmptyTtlMs,
     reclaimGraceMs: config.reclaimGraceMs,
+    maxRooms: config.maxRooms,
     logger,
     onRoomChanged: (room) => {
       io.to(room.code).emit('room:state', room.snapshot());
@@ -78,6 +79,9 @@ export function createApp({ config, logger, provider: providerOverride }: AppOpt
   const limiters = {
     search: new SlidingWindowLimiter(config.searchRatePerMinute, 60_000),
     chat: new SlidingWindowLimiter(20, 5_000),
+    // Keyed by client IP: a script must not be able to fill memory with rooms or seats.
+    create: new SlidingWindowLimiter(config.roomCreateRatePerMinute, 60_000),
+    join: new SlidingWindowLimiter(config.roomJoinRatePerMinute, 60_000),
   };
 
   io.on('connection', (socket) => {
@@ -87,6 +91,8 @@ export function createApp({ config, logger, provider: providerOverride }: AppOpt
   const pruneTimer = setInterval(() => {
     limiters.search.prune();
     limiters.chat.prune();
+    limiters.create.prune();
+    limiters.join.prune();
   }, 5 * 60_000);
   pruneTimer.unref();
 

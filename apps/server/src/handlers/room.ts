@@ -5,8 +5,11 @@ import {
   roomSettingsSchema,
   type JoinResult,
 } from '@jamwave/shared';
+import { AppError } from '../lib/errors';
+import type { SlidingWindowLimiter } from '../lib/rateLimit';
 import type { ParticipantRecord, Room } from '../rooms/Room';
 import {
+  clientIp,
   parse,
   requireHost,
   requireMembership,
@@ -14,6 +17,14 @@ import {
   type AppSocket,
   type HandlerContext,
 } from './context';
+
+function throttleByIp(limiter: SlidingWindowLimiter, socket: AppSocket, what: string): void {
+  const result = limiter.tryAcquire(clientIp(socket));
+  if (!result.ok) {
+    const seconds = Math.max(1, Math.ceil(result.retryAfterMs / 1000));
+    throw new AppError('RATE_LIMITED', `Too many ${what} — try again in ${seconds}s`);
+  }
+}
 
 export function registerRoomHandlers(ctx: HandlerContext, socket: AppSocket): void {
   const leaveCurrent = (): void => {
@@ -59,6 +70,7 @@ export function registerRoomHandlers(ctx: HandlerContext, socket: AppSocket): vo
   socket.on('room:create', (payload, ack) =>
     respond(ctx, socket, ack, () => {
       const input = parse(createRoomSchema, payload);
+      throttleByIp(ctx.limiters.create, socket, 'new jams');
       leaveCurrent();
       const { room, participant } = ctx.manager.createRoom({
         hostName: input.name,
@@ -82,6 +94,8 @@ export function registerRoomHandlers(ctx: HandlerContext, socket: AppSocket): vo
         ? (ctx.manager.getRoom(input.code)?.getParticipant(input.reclaim.participantId)?.socketId ??
           null)
         : null;
+      // Reclaims (a refresh) are free; fresh seats are limited per address.
+      if (!previousSocketId) throttleByIp(ctx.limiters.join, socket, 'joins');
       const { room, participant, reclaimed } = ctx.manager.join({
         code: input.code,
         name: input.name,
