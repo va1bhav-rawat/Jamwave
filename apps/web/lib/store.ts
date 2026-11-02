@@ -1,10 +1,11 @@
-import type {
-  ChatMessage,
-  JoinResult,
-  Participant,
-  Reaction,
-  RoomClosedReason,
-  RoomSnapshot,
+import {
+  TIMING,
+  type ChatMessage,
+  type JoinResult,
+  type Participant,
+  type Reaction,
+  type RoomClosedReason,
+  type RoomSnapshot,
 } from '@jamwave/shared';
 import { create } from 'zustand';
 import { session, type Identity } from './session';
@@ -25,7 +26,18 @@ export interface SyncInfo {
   needsGesture: boolean;
   /** Duration reported by the player when the catalogue did not know it. */
   localDurationMs: number;
+  /** How far ahead of the playhead the player has buffered (ms). */
+  bufferAheadMs: number;
+  /** Drift currently tolerated by the adaptive corrector (ms). */
+  thresholdMs: number;
+  /** Recent connection trouble level (0 = healthy). */
+  strikes: number;
+  /** Last correction decision, for the dev HUD. */
+  reason: string;
 }
+
+/** Player size preference: 'small' caps the video box so YouTube picks a lower resolution. */
+export type VideoSize = 'auto' | 'small';
 
 export interface RoomStore {
   status: RoomStatus;
@@ -40,6 +52,7 @@ export interface RoomStore {
   chatVisible: boolean;
   sync: SyncInfo;
   volume: number;
+  videoSize: VideoSize;
 
   setStatus: (status: RoomStatus) => void;
   setConnected: (connected: boolean) => void;
@@ -51,6 +64,7 @@ export interface RoomStore {
   pushReaction: (reaction: Reaction) => void;
   setSync: (patch: Partial<SyncInfo>) => void;
   setVolume: (volume: number) => void;
+  setVideoSize: (size: VideoSize) => void;
   setEnded: (reason: RoomClosedReason) => void;
   reset: () => void;
 }
@@ -62,7 +76,20 @@ const initialSync: SyncInfo = {
   playerState: 'none',
   needsGesture: false,
   localDurationMs: 0,
+  bufferAheadMs: 0,
+  thresholdMs: TIMING.HARD_SEEK_THRESHOLD_MS,
+  strikes: 0,
+  reason: 'none',
 };
+
+/** Sync fields that start over with every track. */
+const freshTrackSync = {
+  localDurationMs: 0,
+  bufferAheadMs: 0,
+  thresholdMs: TIMING.HARD_SEEK_THRESHOLD_MS,
+  strikes: 0,
+  reason: 'none',
+} satisfies Partial<SyncInfo>;
 
 export const useRoomStore = create<RoomStore>()((set, get) => ({
   status: 'idle',
@@ -77,6 +104,7 @@ export const useRoomStore = create<RoomStore>()((set, get) => ({
   chatVisible: false,
   sync: initialSync,
   volume: 80,
+  videoSize: 'auto',
 
   setStatus: (status) => set({ status }),
   setConnected: (connected) => set({ connected }),
@@ -90,7 +118,7 @@ export const useRoomStore = create<RoomStore>()((set, get) => ({
       self: result.self,
       chat: result.chat,
       unread: 0,
-      sync: { ...get().sync, needsGesture: false, localDurationMs: 0 },
+      sync: { ...get().sync, ...freshTrackSync, needsGesture: false },
     }),
   applySnapshot: (snapshot) => {
     const current = get().snapshot;
@@ -98,7 +126,7 @@ export const useRoomStore = create<RoomStore>()((set, get) => ({
     const trackChanged = current?.playback.track?.id !== snapshot.playback.track?.id;
     set({
       snapshot,
-      sync: trackChanged ? { ...get().sync, localDurationMs: 0 } : get().sync,
+      sync: trackChanged ? { ...get().sync, ...freshTrackSync } : get().sync,
     });
   },
   pushChat: (message) =>
@@ -118,6 +146,10 @@ export const useRoomStore = create<RoomStore>()((set, get) => ({
     const clamped = Math.min(100, Math.max(0, Math.round(volume)));
     session.setVolume(clamped);
     set({ volume: clamped });
+  },
+  setVideoSize: (size) => {
+    session.setVideoSize(size);
+    set({ videoSize: size });
   },
   setEnded: (reason) => set({ status: 'ended', endedReason: reason }),
   reset: () =>

@@ -16,6 +16,7 @@ export function Stage() {
   const playback = useRoomStore((s) => s.snapshot?.playback ?? null);
   const needsGesture = useRoomStore((s) => s.sync.needsGesture);
   const volume = useRoomStore((s) => s.volume);
+  const videoSize = useRoomStore((s) => s.videoSize);
   const addedBy = useRoomStore((s) => {
     const id = s.snapshot?.playback.track?.addedBy.id;
     return s.snapshot?.participants.find((p) => p.id === id) ?? null;
@@ -75,12 +76,15 @@ export function Stage() {
         </button>
       ) : null}
 
-      {/* The YouTube player. Kept visible and ≥200px tall while a track is loaded (YouTube API terms). */}
-      <div className={cn('relative w-full bg-black', track ? 'aspect-video min-h-[200px]' : 'h-0')}>
-        <div
-          ref={hostRef}
-          className="absolute inset-0 [&>div]:h-full [&>div]:w-full [&>iframe]:h-full [&>iframe]:w-full"
-        />
+      {/* The YouTube player. Kept visible and ≥200px tall while a track is loaded (YouTube API terms).
+          A smaller box makes YouTube pick a lower resolution (its only remaining quality lever). */}
+      <div className={cn('mx-auto w-full bg-black', videoSize === 'small' && 'max-w-[480px]')}>
+        <div className={cn('relative w-full', track ? 'aspect-video min-h-[200px]' : 'h-0')}>
+          <div
+            ref={hostRef}
+            className="absolute inset-0 [&>div]:h-full [&>div]:w-full [&>iframe]:h-full [&>iframe]:w-full"
+          />
+        </div>
       </div>
 
       {coarse && track ? <PipHint /> : null}

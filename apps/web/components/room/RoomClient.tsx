@@ -32,6 +32,7 @@ export function RoomClient({ code }: { code: string }) {
   const peopleCount = useRoomStore((s) => s.snapshot?.participants.length ?? 0);
   const setChatVisible = useRoomStore((s) => s.setChatVisible);
   const setVolume = useRoomStore((s) => s.setVolume);
+  const setVideoSize = useRoomStore((s) => s.setVideoSize);
   const [mobileTab, setMobileTab] = useState<MobileTab>('queue');
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('chat');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
@@ -42,6 +43,7 @@ export function RoomClient({ code }: { code: string }) {
   // Restore preferences and, after a refresh, silently reclaim this tab's seat.
   useEffect(() => {
     setVolume(session.getVolume());
+    setVideoSize(session.getVideoSize());
     const state = useRoomStore.getState();
     if (state.status === 'joined' && state.snapshot?.code === code) return;
     if (state.status === 'connecting' || state.status === 'joining') return;
@@ -52,7 +54,7 @@ export function RoomClient({ code }: { code: string }) {
         useRoomStore.getState().setError({ code: 'JOIN_FAILED', message: errorMessage(err) }),
       );
     }
-  }, [code, setVolume]);
+  }, [code, setVolume, setVideoSize]);
 
   useEffect(() => {
     setChatVisible(isDesktop ? sidebarTab === 'chat' : mobileTab === 'chat');

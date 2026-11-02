@@ -1,10 +1,11 @@
 /**
- * Browser persistence helpers. localStorage keeps cross-tab preferences (nickname, volume);
+ * Browser persistence helpers. localStorage keeps cross-tab preferences (nickname, volume, video size);
  * sessionStorage keeps the per-tab seat identity so a refresh reclaims the same participant.
  * Everything is wrapped in try/catch: storage can be blocked or throw in private windows.
  */
 const NICKNAME_KEY = 'jamwave:nickname';
 const VOLUME_KEY = 'jamwave:volume';
+const VIDEO_SIZE_KEY = 'jamwave:videoSize';
 const identityKey = (code: string) => `jamwave:identity:${code}`;
 
 export interface Identity {
@@ -48,6 +49,12 @@ export const session = {
   },
   setVolume(volume: number): void {
     write(local, VOLUME_KEY, String(Math.round(volume)));
+  },
+  getVideoSize(): 'auto' | 'small' {
+    return read(local, VIDEO_SIZE_KEY) === 'small' ? 'small' : 'auto';
+  },
+  setVideoSize(size: 'auto' | 'small'): void {
+    write(local, VIDEO_SIZE_KEY, size);
   },
   getIdentity(code: string): Identity | null {
     const raw = read(perTab, identityKey(code));

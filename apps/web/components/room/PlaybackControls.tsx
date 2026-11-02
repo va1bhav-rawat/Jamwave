@@ -1,13 +1,23 @@
 'use client';
 
 import { getPlaybackPosition } from '@jamwave/shared';
-import { Pause, Play, SkipForward, ThumbsDown, Volume2, VolumeX } from 'lucide-react';
+import {
+  Expand,
+  Pause,
+  Play,
+  Shrink,
+  SkipForward,
+  ThumbsDown,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { serverNow } from '@/lib/clock';
 import { errorMessage, jam } from '@/lib/jamClient';
 import { selectCanControl, selectMe, useRoomStore } from '@/lib/store';
+import { useMediaQuery } from '@/lib/useBrowser';
 import { useTicker } from '@/lib/useTicker';
 import { cn, formatDuration, formatPosition } from '@/lib/utils';
 
@@ -18,6 +28,9 @@ export function PlaybackControls() {
   const localDurationMs = useRoomStore((s) => s.sync.localDurationMs);
   const volume = useRoomStore((s) => s.volume);
   const setVolume = useRoomStore((s) => s.setVolume);
+  const videoSize = useRoomStore((s) => s.videoSize);
+  const setVideoSize = useRoomStore((s) => s.setVideoSize);
+  const coarse = useMediaQuery('(pointer: coarse)');
   const [scrub, setScrub] = useState<number | null>(null);
   const [lastVolume, setLastVolume] = useState(80);
 
@@ -149,6 +162,25 @@ export function PlaybackControls() {
         ) : null}
 
         <div className={cn('ml-auto flex items-center gap-2')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={videoSize === 'small' ? 'Full-size video' : 'Smaller video (saves data)'}
+            title={
+              coarse
+                ? "On phones, the video's quality menu saves more data."
+                : videoSize === 'small'
+                  ? 'Full-size video'
+                  : 'Smaller video (saves data)'
+            }
+            onClick={() => setVideoSize(videoSize === 'small' ? 'auto' : 'small')}
+          >
+            {videoSize === 'small' ? (
+              <Expand className="h-4 w-4" />
+            ) : (
+              <Shrink className="h-4 w-4" />
+            )}
+          </Button>
           <Button
             variant="ghost"
             size="icon"

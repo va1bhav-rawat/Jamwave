@@ -95,3 +95,111 @@ export function driftAction(
 ): DriftAction {
   return Math.abs(driftMs) > threshold ? 'seek' : 'none';
 }
+
+export interface CorrectionInput {
+  nowMs: number;
+  /** Player position minus room position; negative means the player is behind. */
+  driftMs: number;
+  currentMs: number;
+  expectedMs: number;
+  /** End of the player's buffered range (ms into the track), or null when unknown. */
+  bufferedEndMs: number | null;
+}
+
+export type Correction =
+  | { action: 'none' }
+  | { action: 'wait'; reason: 'cooldown' | 'unbuffered' }
+  | {
+      action: 'seek';
+      targetMs: number;
+      reason: 'buffered' | 'behind-max' | 'far' | 'unknown-buffer';
+    };
+
+/**
+ * Decides when a drifting player should be seeked.
+ *
+ * Seeking into video that has not been downloaded forces a rebuffer, which puts the player
+ * behind again, so on a struggling connection a fixed threshold turns into a stutter loop.
+ * This policy seeks forward only into buffered video, tolerates more drift after each
+ * "strike" (a stall or a rebuffering seek), spaces seeks out with a growing cooldown, and
+ * tightens back after a quiet minute. On a healthy connection it behaves like the plain
+ * 300 ms threshold.
+ */
+export class SyncCorrector {
+  private strikeCount = 0;
+  private lastStrikeAt = 0;
+  private nextSeekAt = 0;
+
+  /** Recent trouble level, 0..SYNC_MAX_STRIKES. */
+  get strikes(): number {
+    return this.strikeCount;
+  }
+
+  /** Drift tolerated before any correction is considered. */
+  get thresholdMs(): number {
+    return Math.min(
+      TIMING.HARD_SEEK_THRESHOLD_MS * 2 ** this.strikeCount,
+      TIMING.SYNC_MAX_THRESHOLD_MS,
+    );
+  }
+
+  /** Record a stall or a rebuffering seek: widen the tolerance and start a cooldown. */
+  strike(nowMs: number): void {
+    this.strikeCount = Math.min(this.strikeCount + 1, TIMING.SYNC_MAX_STRIKES);
+    this.lastStrikeAt = nowMs;
+    const cooldown = Math.min(
+      TIMING.SYNC_COOLDOWN_MS * 2 ** (this.strikeCount - 1),
+      TIMING.SYNC_MAX_COOLDOWN_MS,
+    );
+    this.nextSeekAt = nowMs + cooldown;
+  }
+
+  reset(): void {
+    this.strikeCount = 0;
+    this.lastStrikeAt = 0;
+    this.nextSeekAt = 0;
+  }
+
+  decide(input: CorrectionInput): Correction {
+    const { nowMs, driftMs, currentMs, expectedMs, bufferedEndMs } = input;
+    this.decay(nowMs);
+    const magnitude = Math.abs(driftMs);
+    if (magnitude <= this.thresholdMs) return { action: 'none' };
+    const targetMs = expectedMs + TIMING.SEEK_LOOKAHEAD_MS;
+    if (magnitude >= TIMING.SYNC_MAX_DRIFT_MS) {
+      this.strike(nowMs);
+      return { action: 'seek', targetMs, reason: 'far' };
+    }
+    if (nowMs < this.nextSeekAt) return { action: 'wait', reason: 'cooldown' };
+    if (targetMs <= currentMs) {
+      // Backward: recently played video is normally still in the buffer.
+      if (currentMs - targetMs <= TIMING.SYNC_BACK_BUFFER_MS) {
+        this.nextSeekAt = nowMs + TIMING.SYNC_BUFFERED_COOLDOWN_MS;
+        return { action: 'seek', targetMs, reason: 'buffered' };
+      }
+      this.strike(nowMs);
+      return { action: 'seek', targetMs, reason: 'far' };
+    }
+    if (bufferedEndMs === null) {
+      this.strike(nowMs);
+      return { action: 'seek', targetMs, reason: 'unknown-buffer' };
+    }
+    if (targetMs + TIMING.SYNC_BUFFER_MARGIN_MS <= bufferedEndMs) {
+      this.nextSeekAt = nowMs + TIMING.SYNC_BUFFERED_COOLDOWN_MS;
+      return { action: 'seek', targetMs, reason: 'buffered' };
+    }
+    if (magnitude >= TIMING.SYNC_UNBUFFERED_SEEK_MS) {
+      this.strike(nowMs);
+      return { action: 'seek', targetMs, reason: 'behind-max' };
+    }
+    // Keep playing a little behind; the buffer grows meanwhile and the seek becomes free.
+    return { action: 'wait', reason: 'unbuffered' };
+  }
+
+  private decay(nowMs: number): void {
+    if (this.strikeCount > 0 && nowMs - this.lastStrikeAt >= TIMING.SYNC_DECAY_MS) {
+      this.strikeCount -= 1;
+      this.lastStrikeAt = nowMs;
+    }
+  }
+}

@@ -48,8 +48,8 @@ offset = t1 − (t0 + t2) / 2
 
 1. Track changed → `loadVideoById({ videoId, startSeconds: expected })` (or `cueVideoById` when paused).
 2. Status / position changed → `playVideo()` / `pauseVideo()` / `seekTo(expected)`.
-3. Every second: `drift = player.getCurrentTime() − expected`. If `|drift| > 300 ms`, `seekTo(expected + 150 ms)`; otherwise leave it alone (small seeks sound worse than small drift).
-4. If the room says playing but the player is stuck in cued/unstarted (browser blocked autoplay), the UI shows a "Tap to listen along" button; the tap calls `playVideo()` from a user gesture.
+3. Every second: `drift = player.getCurrentTime() − expected`, decided by `SyncCorrector` (shared, unit-tested). Within the current tolerance (300 ms when healthy) nothing happens. A forward seek is issued only into video the player has already buffered (`getVideoLoadedFraction`); otherwise the player keeps playing a little behind until the buffer catches up and the seek becomes free. Each stall or rebuffering seek is a "strike": the tolerance doubles (up to 2.4 s) and seeks are spaced out (5 → 20 s); a quiet minute removes a strike. Beyond 3 s behind a rebuffering seek is accepted, beyond 5 s a seek always happens. This replaces a fixed 300 ms threshold that, on slow connections, seeked into undownloaded video after every stall and produced a seek → rebuffer → seek loop (and kept resetting YouTube's quality choice).
+4. A fresh load is left alone while its buffer is growing. If nothing arrives, a bare `playVideo()` is tried (no seek: a seek restarts the fetch), then the UI shows a "Tap to listen along" button (browser blocked autoplay); the tap calls `seekTo + playVideo()` from a user gesture.
 5. `ENDED` → `track:ended`; player error → `track:error`. The server only trusts these from the host (or anyone when the host is away) and also runs its own timer at `updatedAt + duration − positionMs`.
 
 ### Reconnect and identity

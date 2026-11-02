@@ -64,10 +64,11 @@ A free, browser-based jam session: one link, everyone hears the same song at the
 
 ## Risks
 
-| Risk                                   | Mitigation                                                                                       |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| YouTube search quota (100/day default) | 24 h cache, paste-link path is free, daily cap with friendly fallback, apply for extension early |
-| Mobile autoplay restrictions           | Explicit "Tap to listen" gesture; detect stalled player and prompt                               |
-| Region-blocked / removed videos        | Player error → auto-skip with a system message                                                   |
-| Abuse (spam, floods)                   | Per-participant rate limits, payload validation, room size limits                                |
-| Host leaves mid-jam                    | Grace period + automatic host handoff                                                            |
+| Risk                                    | Mitigation                                                                                                                                                                                          |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| YouTube search quota (100/day default)  | 24 h cache, paste-link path is free, daily cap with friendly fallback, apply for extension early                                                                                                    |
+| Mobile autoplay restrictions            | Explicit "Tap to listen" gesture; detect stalled player and prompt                                                                                                                                  |
+| Region-blocked / removed videos         | Player error → auto-skip with a system message                                                                                                                                                      |
+| Abuse (spam, floods)                    | Per-participant rate limits, payload validation, room size limits                                                                                                                                   |
+| Host leaves mid-jam                     | Grace period + automatic host handoff                                                                                                                                                               |
+| Slow connections (seek → rebuffer loop) | Buffer-aware, backing-off sync (`SyncCorrector`): stutter-free beats sub-second sync; offset may reach ~2.4 s while a connection struggles and tightens within a minute; "smaller video" preference |

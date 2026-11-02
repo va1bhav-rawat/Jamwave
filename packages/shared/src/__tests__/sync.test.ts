@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ClockSync, driftAction, getPlaybackPosition, getTrackEndsAt } from '../sync';
+import {
+  ClockSync,
+  SyncCorrector,
+  driftAction,
+  getPlaybackPosition,
+  getTrackEndsAt,
+} from '../sync';
 import type { PlaybackState, Track } from '../types';
 
 const track: Track = {
@@ -95,5 +101,110 @@ describe('driftAction', () => {
     expect(driftAction(-299)).toBe('none');
     expect(driftAction(301)).toBe('seek');
     expect(driftAction(-1_000)).toBe('seek');
+  });
+});
+
+describe('SyncCorrector', () => {
+  const expected = 60_000;
+  const input = (
+    driftMs: number,
+    bufferedEndMs: number | null,
+    nowMs = 0,
+  ): Parameters<SyncCorrector['decide']>[0] => ({
+    nowMs,
+    driftMs,
+    currentMs: expected + driftMs,
+    expectedMs: expected,
+    bufferedEndMs,
+  });
+
+  it('leaves drift within the threshold alone', () => {
+    const c = new SyncCorrector();
+    expect(c.decide(input(-250, 70_000))).toEqual({ action: 'none' });
+    expect(c.decide(input(250, 70_000))).toEqual({ action: 'none' });
+  });
+
+  it('seeks forward when the target is buffered, without a strike', () => {
+    const c = new SyncCorrector();
+    expect(c.decide(input(-500, 70_000))).toEqual({
+      action: 'seek',
+      targetMs: 60_150,
+      reason: 'buffered',
+    });
+    expect(c.strikes).toBe(0);
+    expect(c.thresholdMs).toBe(300);
+  });
+
+  it('waits instead of seeking into unbuffered video', () => {
+    const c = new SyncCorrector();
+    expect(c.decide(input(-500, 60_200))).toEqual({ action: 'wait', reason: 'unbuffered' });
+    expect(c.strikes).toBe(0);
+  });
+
+  it('accepts one rebuffer when far behind and unbuffered', () => {
+    const c = new SyncCorrector();
+    expect(c.decide(input(-4_000, 56_500))).toMatchObject({ action: 'seek', reason: 'behind-max' });
+    expect(c.strikes).toBe(1);
+    expect(c.thresholdMs).toBe(600);
+  });
+
+  it('seeks back within the back-buffer', () => {
+    const c = new SyncCorrector();
+    expect(c.decide(input(600, 70_000))).toEqual({
+      action: 'seek',
+      targetMs: 60_150,
+      reason: 'buffered',
+    });
+    expect(c.strikes).toBe(0);
+  });
+
+  it('seeks optimistically when the buffer is unknown, with a strike', () => {
+    const c = new SyncCorrector();
+    expect(c.decide(input(-500, null))).toMatchObject({ action: 'seek', reason: 'unknown-buffer' });
+    expect(c.strikes).toBe(1);
+  });
+
+  it('waits during the cooldown unless the drift is extreme', () => {
+    const c = new SyncCorrector();
+    c.strike(0);
+    expect(c.decide(input(-800, 70_000, 1_000))).toEqual({ action: 'wait', reason: 'cooldown' });
+    expect(c.decide(input(-6_000, 70_000, 1_000))).toMatchObject({ action: 'seek', reason: 'far' });
+    expect(c.strikes).toBe(2);
+  });
+
+  it('widens the threshold and cooldown per strike, up to the caps', () => {
+    const c = new SyncCorrector();
+    c.strike(0);
+    expect(c.thresholdMs).toBe(600);
+    expect(c.decide(input(-700, 70_000, 4_999))).toEqual({ action: 'wait', reason: 'cooldown' });
+    expect(c.decide(input(-700, 70_000, 5_000))).toMatchObject({ action: 'seek' });
+    c.strike(5_000);
+    expect(c.thresholdMs).toBe(1_200);
+    expect(c.decide(input(-1_300, 70_000, 14_999))).toEqual({ action: 'wait', reason: 'cooldown' });
+    c.strike(15_000);
+    expect(c.thresholdMs).toBe(2_400);
+    expect(c.decide(input(-2_500, 70_000, 34_999))).toEqual({ action: 'wait', reason: 'cooldown' });
+    c.strike(35_000);
+    expect(c.strikes).toBe(3);
+    expect(c.thresholdMs).toBe(2_400);
+  });
+
+  it('drops one strike after a quiet minute', () => {
+    const c = new SyncCorrector();
+    c.strike(0);
+    c.strike(0);
+    expect(c.decide(input(-100, 70_000, 61_000))).toEqual({ action: 'none' });
+    expect(c.strikes).toBe(1);
+    expect(c.thresholdMs).toBe(600);
+  });
+
+  it('resets for a new track', () => {
+    const c = new SyncCorrector();
+    c.strike(0);
+    c.strike(0);
+    c.reset();
+    expect(c.strikes).toBe(0);
+    expect(c.thresholdMs).toBe(300);
+    expect(c.decide(input(-500, 70_000, 1))).toMatchObject({ action: 'seek', reason: 'buffered' });
   });
 });
