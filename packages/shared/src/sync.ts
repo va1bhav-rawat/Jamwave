@@ -129,10 +129,29 @@ export class SyncCorrector {
   private strikeCount = 0;
   private lastStrikeAt = 0;
   private nextSeekAt = 0;
+  private lookahead: number = TIMING.SEEK_LOOKAHEAD_MS;
 
   /** Recent trouble level, 0..SYNC_MAX_STRIKES. */
   get strikes(): number {
     return this.strikeCount;
+  }
+
+  /**
+   * How far past the room position a seek aims, so the player lands on target after the
+   * time the seek itself takes. Learned from measured seek costs on this device.
+   */
+  get lookaheadMs(): number {
+    return this.lookahead;
+  }
+
+  /**
+   * Record how long a seek took until playback resumed. Updates the lookahead, and an
+   * expensive seek (a visible pause) counts as a strike so corrections become rarer.
+   */
+  recordSeekCost(costMs: number, nowMs: number): void {
+    const cost = Math.max(0, Math.min(costMs, TIMING.SYNC_MAX_LOOKAHEAD_MS));
+    this.lookahead = Math.max(TIMING.SEEK_LOOKAHEAD_MS, Math.round((this.lookahead + cost) / 2));
+    if (costMs > TIMING.SYNC_SEEK_COST_STRIKE_MS) this.strike(nowMs);
   }
 
   /** Drift tolerated before any correction is considered. */
@@ -165,7 +184,7 @@ export class SyncCorrector {
     this.decay(nowMs);
     const magnitude = Math.abs(driftMs);
     if (magnitude <= this.thresholdMs) return { action: 'none' };
-    const targetMs = expectedMs + TIMING.SEEK_LOOKAHEAD_MS;
+    const targetMs = expectedMs + this.lookahead;
     if (magnitude >= TIMING.SYNC_MAX_DRIFT_MS) {
       this.strike(nowMs);
       return { action: 'seek', targetMs, reason: 'far' };

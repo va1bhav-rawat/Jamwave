@@ -18,7 +18,7 @@ export function DevHud() {
       {connected ? 'live' : 'offline'} · v{version} · offset {Math.round(sync.offset)}ms · rtt{' '}
       {Math.round(sync.rtt)}ms · drift {sync.drift}ms · player {sync.playerState} · {visibility}
       {fullscreen ? ' · fullscreen' : ''} · buffer +{(sync.bufferAheadMs / 1000).toFixed(1)}s · thr{' '}
-      {sync.thresholdMs}ms · strikes {sync.strikes} · {sync.reason}
+      {sync.thresholdMs}ms · strikes {sync.strikes} · seek ~{sync.seekCostMs}ms · {sync.reason}
     </div>
   );
 }

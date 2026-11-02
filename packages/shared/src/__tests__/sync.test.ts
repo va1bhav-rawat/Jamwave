@@ -198,6 +198,30 @@ describe('SyncCorrector', () => {
     expect(c.thresholdMs).toBe(600);
   });
 
+  it('learns the seek cost and aims further ahead', () => {
+    const c = new SyncCorrector();
+    expect(c.lookaheadMs).toBe(150);
+    c.recordSeekCost(100, 0);
+    expect(c.lookaheadMs).toBe(150);
+    expect(c.strikes).toBe(0);
+    c.recordSeekCost(650, 0);
+    expect(c.lookaheadMs).toBe(400);
+    expect(c.strikes).toBe(1);
+    expect(c.decide(input(-800, 70_000, 5_000))).toEqual({
+      action: 'seek',
+      targetMs: 60_400,
+      reason: 'buffered',
+    });
+  });
+
+  it('keeps the learned seek cost across tracks', () => {
+    const c = new SyncCorrector();
+    c.recordSeekCost(650, 0);
+    c.reset();
+    expect(c.strikes).toBe(0);
+    expect(c.lookaheadMs).toBe(400);
+  });
+
   it('resets for a new track', () => {
     const c = new SyncCorrector();
     c.strike(0);

@@ -140,6 +140,8 @@ export function useSyncedPlayer(
   const lastLoadedFraction = useRef(0);
   /** Previous player state, to recognise a BUFFERING → PLAYING stall recovery. */
   const lastState = useRef(-1);
+  /** When we issued a seek that has not resumed playback yet (to measure what seeks cost here). */
+  const seekIssuedAt = useRef<number | null>(null);
   const setSync = useRoomStore((s) => s.setSync);
 
   // Keep the latest props reachable from timers and player callbacks.
@@ -156,6 +158,16 @@ export function useSyncedPlayer(
   const markCommand = useCallback(() => {
     lastCommandAt.current = Date.now();
   }, []);
+
+  /** Seek while playing, remembering when, so the resume time can be measured. */
+  const issueSeek = useCallback(
+    (player: YT.Player, targetMs: number) => {
+      markCommand();
+      seekIssuedAt.current = Date.now();
+      player.seekTo(targetMs / 1000, true);
+    },
+    [markCommand],
+  );
 
   /** A video was just (re)loaded or (re)started: give it time before judging it stuck. */
   const beginLoad = useCallback(() => {
@@ -175,12 +187,12 @@ export function useSyncedPlayer(
       if (!current) return;
       markCommand();
       if (current.status === 'playing') {
-        player.seekTo((expectedMs() + TIMING.SEEK_LOOKAHEAD_MS) / 1000, true);
+        issueSeek(player, expectedMs() + corrector.current.lookaheadMs);
       } else if (player.getPlayerState() === YT.PlayerState.PAUSED) {
         player.seekTo(current.positionMs / 1000, true);
       }
     },
-    [expectedMs, markCommand],
+    [expectedMs, markCommand, issueSeek],
   );
 
   // Create the player once.
@@ -269,7 +281,24 @@ export function useSyncedPlayer(
                   TIMING.SEEK_JUMP_MS;
               if (!jumped && alignPaused(event.target, current.positionMs)) markCommand();
             }
+            let resolvedSeek = false;
+            if (state === yt.PlayerState.PLAYING && seekIssuedAt.current !== null) {
+              // Our seek has resumed playback: learn what a seek costs on this device.
+              const cost = Date.now() - seekIssuedAt.current;
+              seekIssuedAt.current = null;
+              resolvedSeek = true;
+              corrector.current.recordSeekCost(cost, Date.now());
+              setSync({
+                seekCostMs: Math.round(cost),
+                strikes: corrector.current.strikes,
+                thresholdMs: corrector.current.thresholdMs,
+                reason: cost > TIMING.SYNC_SEEK_COST_STRIKE_MS ? 'slow seek' : 'seek done',
+              });
+            } else if (state !== yt.PlayerState.BUFFERING && state !== yt.PlayerState.PLAYING) {
+              seekIssuedAt.current = null;
+            }
             if (
+              !resolvedSeek &&
               state === yt.PlayerState.PLAYING &&
               lastState.current === yt.PlayerState.BUFFERING &&
               Date.now() - lastCommandAt.current > COMMAND_ECHO_MS &&
@@ -359,7 +388,7 @@ export function useSyncedPlayer(
         beginLoad();
       } else if (Math.abs(drift) > TIMING.HARD_SEEK_THRESHOLD_MS) {
         markCommand();
-        player.seekTo((expectedMs() + TIMING.SEEK_LOOKAHEAD_MS) / 1000, true);
+        issueSeek(player, expectedMs() + corrector.current.lookaheadMs);
       }
     } else if (status === 'paused') {
       if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) {
@@ -385,6 +414,7 @@ export function useSyncedPlayer(
     setSync,
     markCommand,
     beginLoad,
+    issueSeek,
   ]);
 
   // One sync check: correct drift, restart a stalled player, and spot seeks made in YouTube's UI.
@@ -438,10 +468,7 @@ export function useSyncedPlayer(
           strikes: corrector.current.strikes,
           reason: decision.action === 'none' ? 'none' : `${decision.action} ${decision.reason}`,
         });
-        if (decision.action === 'seek') {
-          markCommand();
-          player.seekTo(decision.targetMs / 1000, true);
-        }
+        if (decision.action === 'seek') issueSeek(player, decision.targetMs);
       } else if (state !== YT.PlayerState.BUFFERING) {
         // Mobile browsers pause hidden pages and refuse to restart them; catch up on return instead.
         if (document.visibilityState !== 'visible') return;
@@ -487,7 +514,7 @@ export function useSyncedPlayer(
         }
       }
     }
-  }, [expectedMs, setSync, markCommand, handleUserSeek]);
+  }, [expectedMs, setSync, markCommand, handleUserSeek, issueSeek]);
 
   // Drift loop.
   useEffect(() => {
@@ -518,7 +545,7 @@ export function useSyncedPlayer(
         holdUntil.current = 0;
         stalledTicks.current = 0;
         markCommand();
-        player.seekTo((expectedMs() + TIMING.SEEK_LOOKAHEAD_MS) / 1000, true);
+        issueSeek(player, expectedMs() + corrector.current.lookaheadMs);
         player.playVideo();
         beginLoad();
         // If the browser still blocks playback, the drift loop shows "Tap to listen along".
@@ -533,7 +560,7 @@ export function useSyncedPlayer(
       document.removeEventListener('visibilitychange', catchUp);
       window.removeEventListener('pageshow', catchUp);
     };
-  }, [ready, expectedMs, markCommand, checkDrift, beginLoad]);
+  }, [ready, expectedMs, markCommand, checkDrift, beginLoad, issueSeek]);
 
   // Volume.
   useEffect(() => {

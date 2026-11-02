@@ -35,6 +35,8 @@ export interface SyncInfo {
   strikes: number;
   /** Last correction decision, for the dev HUD. */
   reason: string;
+  /** How long the last seek took until playback resumed (ms). */
+  seekCostMs: number;
 }
 
 /** Player size preference: 'small' caps the video box so YouTube picks a lower resolution. */
@@ -84,6 +86,7 @@ const initialSync: SyncInfo = {
   thresholdMs: TIMING.HARD_SEEK_THRESHOLD_MS,
   strikes: 0,
   reason: 'none',
+  seekCostMs: 0,
 };
 
 /** Sync fields that start over with every track. */
