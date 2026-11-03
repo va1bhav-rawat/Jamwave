@@ -60,22 +60,24 @@ Open http://localhost:3000, start a jam, then open the jam link in a second brow
 
 All variables live in one root `.env` (see `.env.example`).
 
-| Variable                      | Used by | Default                    | Notes                                                                               |
-| ----------------------------- | ------- | -------------------------- | ----------------------------------------------------------------------------------- |
-| `PORT`                        | server  | `4000`                     |                                                                                     |
-| `CORS_ORIGIN`                 | server  | `http://localhost:3000`    | Comma-separated browser origins                                                     |
-| `YOUTUBE_API_KEY`             | server  | —                          | Enables search and playlist import. Without it, link pasting still works via oEmbed |
-| `ROOM_EMPTY_TTL_MINUTES`      | server  | `10`                       | How long an empty room survives                                                     |
-| `RECLAIM_GRACE_SECONDS`       | server  | `60`                       | Reconnect window that keeps a seat (and the host role)                              |
-| `SEARCH_RATE_PER_MINUTE`      | server  | `10`                       | Per-participant search limit                                                        |
-| `SEARCH_DAILY_CAP`            | server  | `95`                       | Global `search.list` budget per day (YouTube's default quota allows 100)            |
-| `ROOM_CREATE_RATE_PER_MINUTE` | server  | `5`                        | New jams per minute per client address                                              |
-| `ROOM_JOIN_RATE_PER_MINUTE`   | server  | `30`                       | Fresh joins per minute per client address (reclaims after a refresh are free)       |
-| `MAX_ROOMS`                   | server  | `5000`                     | Hard cap on live rooms; creation answers `SERVER_BUSY` beyond it                    |
-| `LOG_LEVEL`                   | server  | `info`                     | pino level                                                                          |
-| `NEXT_PUBLIC_SOCKET_URL`      | web     | `http://localhost:4000`    | Public URL of the realtime server                                                   |
-| `NEXT_PUBLIC_APP_URL`         | web     | `http://localhost:3000`    | Public URL of the web app (share links, metadata)                                   |
-| `SOCKET_INTERNAL_URL`         | web     | = `NEXT_PUBLIC_SOCKET_URL` | Server-side URL for link previews (e.g. a private network address)                  |
+| Variable                      | Used by | Default                    | Notes                                                                                                                 |
+| ----------------------------- | ------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                        | server  | `4000`                     |                                                                                                                       |
+| `CORS_ORIGIN`                 | server  | `http://localhost:3000`    | Comma-separated browser origins                                                                                       |
+| `YOUTUBE_API_KEY`             | server  | —                          | Enables search and playlist import. Without it, link pasting still works via oEmbed                                   |
+| `ROOM_EMPTY_TTL_MINUTES`      | server  | `10`                       | How long an empty room survives                                                                                       |
+| `RECLAIM_GRACE_SECONDS`       | server  | `60`                       | Reconnect window that keeps a seat (and the host role)                                                                |
+| `SEARCH_RATE_PER_MINUTE`      | server  | `10`                       | Per-participant search limit                                                                                          |
+| `SEARCH_DAILY_CAP`            | server  | `95`                       | Global `search.list` budget per day (YouTube's default quota allows 100)                                              |
+| `ROOM_CREATE_RATE_PER_MINUTE` | server  | `5`                        | New jams per minute per client address                                                                                |
+| `ROOM_JOIN_RATE_PER_MINUTE`   | server  | `30`                       | Fresh joins per minute per client address (reclaims after a refresh are free)                                         |
+| `MAX_ROOMS`                   | server  | `5000`                     | Hard cap on live rooms; creation answers `SERVER_BUSY` beyond it                                                      |
+| `TRUST_PROXY_HOPS`            | server  | `1`                        | Proxies in front of the server; the client IP is read that far from the end of `x-forwarded-for` (0 = socket address) |
+| `MAX_CONNECTIONS_PER_IP`      | server  | `20`                       | Sockets allowed per client address                                                                                    |
+| `LOG_LEVEL`                   | server  | `info`                     | pino level                                                                                                            |
+| `NEXT_PUBLIC_SOCKET_URL`      | web     | `http://localhost:4000`    | Public URL of the realtime server                                                                                     |
+| `NEXT_PUBLIC_APP_URL`         | web     | `http://localhost:3000`    | Public URL of the web app (share links, metadata)                                                                     |
+| `SOCKET_INTERNAL_URL`         | web     | = `NEXT_PUBLIC_SOCKET_URL` | Server-side URL for link previews (e.g. a private network address)                                                    |
 
 ### Getting a YouTube API key
 
@@ -90,7 +92,17 @@ The default quota allows ~100 searches per day; Jamwave caches searches for 24 h
 The two apps deploy independently:
 
 - **Web** → [Vercel](https://vercel.com) (root directory `apps/web`, framework Next.js, env `NEXT_PUBLIC_SOCKET_URL` + `NEXT_PUBLIC_APP_URL`).
-- **Server** → any host that keeps a Node process alive with WebSockets: [Fly.io](https://fly.io) (`apps/server/fly.toml` included), Railway, Render, or your own VPS. Set `CORS_ORIGIN` to the web app's origin.
+- **Server** → any host that keeps a Node process alive with WebSockets: [Render](https://render.com) (what production uses), [Fly.io](https://fly.io) (`apps/server/fly.toml` included), Railway, or your own VPS. Set `CORS_ORIGIN` to the web app's origin and `TRUST_PROXY_HOPS=1` behind the host's proxy.
+
+## Production
+
+| Piece  | Where                                             | Notes                                                                                                                                                                                                        |
+| ------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Web    | https://jamwave.vercel.app                        | Vercel, root directory `apps/web`. Needs `NEXT_PUBLIC_SOCKET_URL` and `NEXT_PUBLIC_APP_URL` set.                                                                                                             |
+| Server | `https://<render-service>.onrender.com` (fill in) | Render free tier, kept awake by an uptime pinger. A cold start can take up to a minute; the web app shows a "server waking up" hint meanwhile. Needs `CORS_ORIGIN`, `TRUST_PROXY_HOPS=1`, `YOUTUBE_API_KEY`. |
+| Health | `GET /health` on the server                       | `ok`, uptime, live rooms, lifetime counters, search budget used today.                                                                                                                                       |
+
+Rooms live in the server's memory. A deploy closes every jam with reason `server_restart`; each browser keeps its queue locally and offers to rebuild the jam in one tap.
 
 Or run both with Docker on one machine:
 
@@ -99,3 +111,7 @@ docker compose up --build
 ```
 
 Sync works on a server-owned clock: the server stores when each track started, and every player follows that position, correcting only where the video is already buffered so slow connections do not stutter.
+
+## License
+
+[MIT](LICENSE).

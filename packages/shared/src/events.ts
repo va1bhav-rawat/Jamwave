@@ -99,7 +99,7 @@ export interface ClientToServerEvents {
   'search:resolve': (payload: SearchResolvePayload, ack: AckFn<SearchResponse>) => void;
 }
 
-export type RoomClosedReason = 'expired' | 'host_closed';
+export type RoomClosedReason = 'expired' | 'host_closed' | 'server_restart';
 
 /** Events the realtime server pushes to browsers. */
 export interface ServerToClientEvents {

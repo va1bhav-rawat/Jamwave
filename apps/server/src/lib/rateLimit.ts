@@ -28,6 +28,11 @@ export class SlidingWindowLimiter {
     return { ok: true, retryAfterMs: 0 };
   }
 
+  /** Forget a key right away (e.g. a socket that disconnected). */
+  forget(key: string): void {
+    this.hits.delete(key);
+  }
+
   /** Drop keys with no hits inside the window. Call occasionally to bound memory. */
   prune(): void {
     const cutoff = this.now() - this.windowMs;

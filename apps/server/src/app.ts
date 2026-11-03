@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { Server } from 'socket.io';
 import type { Config } from './config';
 import { registerSocketHandlers, type AppServer } from './handlers';
+import { resolveClientIp } from './handlers/context';
 import { createRequestHandler } from './http';
 import type { Logger } from './lib/logger';
 import { SlidingWindowLimiter } from './lib/rateLimit';
@@ -82,17 +83,43 @@ export function createApp({ config, logger, provider: providerOverride }: AppOpt
     // Keyed by client IP: a script must not be able to fill memory with rooms or seats.
     create: new SlidingWindowLimiter(config.roomCreateRatePerMinute, 60_000),
     join: new SlidingWindowLimiter(config.roomJoinRatePerMinute, 60_000),
+    flood: new SlidingWindowLimiter(60, 10_000),
+    ping: new SlidingWindowLimiter(20, 10_000),
   };
 
+  // Connections per client address: a script opening thousands of sockets is refused at the
+  // handshake, before it costs a room, a seat or a limiter entry.
+  const connectionsByIp = new Map<string, number>();
+  io.use((socket, next) => {
+    const ip = resolveClientIp(
+      socket.handshake.headers['x-forwarded-for'],
+      socket.handshake.address,
+      config.trustProxyHops,
+    );
+    const current = connectionsByIp.get(ip) ?? 0;
+    if (current >= config.maxConnectionsPerIp) {
+      logger.warn({ ip, connections: current }, 'connection limit per address reached');
+      next(new Error('TOO_MANY_CONNECTIONS'));
+      return;
+    }
+    connectionsByIp.set(ip, current + 1);
+    socket.once('disconnect', () => {
+      const remaining = (connectionsByIp.get(ip) ?? 1) - 1;
+      if (remaining <= 0) connectionsByIp.delete(ip);
+      else connectionsByIp.set(ip, remaining);
+    });
+    next();
+  });
+
   io.on('connection', (socket) => {
-    registerSocketHandlers({ io, manager, provider, limiters, log: logger }, socket);
+    registerSocketHandlers(
+      { io, manager, provider, limiters, trustProxyHops: config.trustProxyHops, log: logger },
+      socket,
+    );
   });
 
   const pruneTimer = setInterval(() => {
-    limiters.search.prune();
-    limiters.chat.prune();
-    limiters.create.prune();
-    limiters.join.prune();
+    for (const limiter of Object.values(limiters)) limiter.prune();
   }, 5 * 60_000);
   pruneTimer.unref();
 
@@ -112,10 +139,17 @@ export function createApp({ config, logger, provider: providerOverride }: AppOpt
         });
       });
     },
-    close() {
+    async close() {
       clearInterval(pruneTimer);
+      // Rooms live in memory: tell everyone the jam is closing so their browser can offer to
+      // rebuild it, and give the transport a moment to flush before the sockets are dropped.
+      const closed = manager.closeAll('server_restart');
+      if (closed > 0) {
+        logger.info({ rooms: closed }, 'closed rooms for restart');
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
       manager.dispose();
-      return new Promise<void>((resolve) => {
+      await new Promise<void>((resolve) => {
         io.close(() => {
           httpServer.close(() => resolve());
         });

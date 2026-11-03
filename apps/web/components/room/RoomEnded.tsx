@@ -15,11 +15,15 @@ export function RoomEnded({ reason, code }: { reason: RoomClosedReason | null; c
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
       <Logo className="mb-10" />
-      <h1 className="text-3xl font-semibold">That&apos;s a wrap</h1>
+      <h1 className="text-3xl font-semibold">
+        {reason === 'server_restart' ? 'Jamwave was just updated' : "That's a wrap"}
+      </h1>
       <p className="mt-3 max-w-md text-fg-muted">
-        {reason === 'host_closed'
-          ? 'The host closed this jam.'
-          : 'This jam ended because everyone left for a while. Thanks for listening together!'}
+        {reason === 'server_restart'
+          ? 'Jams live in memory, so this one closed with the restart. Sorry about that.'
+          : reason === 'host_closed'
+            ? 'The host closed this jam.'
+            : 'This jam ended because everyone left for a while. Thanks for listening together!'}
       </p>
       {seed ? (
         <p className="mt-2 max-w-md text-sm text-fg-subtle">

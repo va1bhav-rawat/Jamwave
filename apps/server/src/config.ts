@@ -33,6 +33,8 @@ const envSchema = z.object({
   ROOM_CREATE_RATE_PER_MINUTE: z.coerce.number().int().positive().default(5),
   ROOM_JOIN_RATE_PER_MINUTE: z.coerce.number().int().positive().default(30),
   MAX_ROOMS: z.coerce.number().int().positive().default(5_000),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
+  MAX_CONNECTIONS_PER_IP: z.coerce.number().int().positive().default(20),
   LOG_LEVEL: z.string().default('info'),
 });
 
@@ -50,6 +52,12 @@ export interface Config {
   roomCreateRatePerMinute: number;
   roomJoinRatePerMinute: number;
   maxRooms: number;
+  /**
+   * How many proxies sit in front of the server (Render / Fly / Vercel = 1). The client address
+   * is read that many entries from the END of `x-forwarded-for`; 0 trusts the socket address only.
+   */
+  trustProxyHops: number;
+  maxConnectionsPerIp: number;
   logLevel: string;
 }
 
@@ -74,6 +82,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     roomCreateRatePerMinute: e.ROOM_CREATE_RATE_PER_MINUTE,
     roomJoinRatePerMinute: e.ROOM_JOIN_RATE_PER_MINUTE,
     maxRooms: e.MAX_ROOMS,
+    trustProxyHops: e.TRUST_PROXY_HOPS,
+    maxConnectionsPerIp: e.MAX_CONNECTIONS_PER_IP,
     logLevel: e.LOG_LEVEL,
   };
 }

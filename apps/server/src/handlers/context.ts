@@ -33,16 +33,41 @@ export interface Limiters {
   chat: SlidingWindowLimiter;
   create: SlidingWindowLimiter;
   join: SlidingWindowLimiter;
+  /** Any event, per socket: stops one connection from flooding the room. */
+  flood: SlidingWindowLimiter;
+  /** `time:ping` per socket (cheap, but a loop of them is still a loop). */
+  ping: SlidingWindowLimiter;
 }
 
 /**
- * Best-effort client address for rate limiting. Behind Render / Fly / Vercel-style proxies the
- * real address is the first entry of `x-forwarded-for`; otherwise the socket's own address.
+ * The client address behind `hops` trusted proxies. Each proxy appends the address it saw to
+ * `x-forwarded-for`, so the trustworthy entry is `hops` from the END; anything to the left was
+ * sent by the client and can say whatever it likes. With `hops` 0, or a header that is too short
+ * to contain a proxy-written entry, the socket's own address is used.
  */
-export function clientIp(socket: AppSocket): string {
-  const forwarded = socket.handshake.headers['x-forwarded-for'];
-  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim();
-  return first || socket.handshake.address || 'unknown';
+export function resolveClientIp(
+  forwarded: string | string[] | undefined,
+  socketAddress: string | undefined,
+  hops: number,
+): string {
+  const fallback = socketAddress || 'unknown';
+  if (hops <= 0) return fallback;
+  const raw = Array.isArray(forwarded) ? forwarded.join(',') : (forwarded ?? '');
+  const entries = raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  if (entries.length < hops) return fallback;
+  return entries[entries.length - hops] ?? fallback;
+}
+
+/** Client address of a connected socket, for rate limiting. */
+export function clientIp(socket: AppSocket, hops: number): string {
+  return resolveClientIp(
+    socket.handshake.headers['x-forwarded-for'],
+    socket.handshake.address,
+    hops,
+  );
 }
 
 export interface HandlerContext {
@@ -50,6 +75,7 @@ export interface HandlerContext {
   manager: RoomManager;
   provider: MusicProvider;
   limiters: Limiters;
+  trustProxyHops: number;
   log: Logger;
 }
 

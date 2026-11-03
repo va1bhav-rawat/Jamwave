@@ -69,8 +69,12 @@ async function rejoin(code: string): Promise<void> {
     await joinRoom(code, name, { silent: true });
     toast.success('Back in sync');
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Could not rejoin the jam';
-    useRoomStore.getState().setError({ code: 'REJOIN_FAILED', message });
+    // Keep the server's code: after a restart it is ROOM_NOT_FOUND, which is what turns the
+    // join screen into "this jam has ended, rebuild it".
+    useRoomStore.getState().setError({
+      code: errorCode(error, 'REJOIN_FAILED'),
+      message: errorMessage(error, 'Could not rejoin the jam'),
+    });
   }
 }
 
@@ -96,7 +100,17 @@ export function ensureConnected(): Promise<void> {
       useRoomStore.getState().setConnectAttempts(0);
       resolve();
     };
-    const onError = () => {
+    const onError = (error: Error) => {
+      if (error.message === 'TOO_MANY_CONNECTIONS') {
+        cleanup();
+        reject(
+          new JamError(
+            'TOO_MANY_CONNECTIONS',
+            'Too many Jamwave tabs are open on your network. Close a few and try again.',
+          ),
+        );
+        return;
+      }
       attempts += 1;
       useRoomStore.getState().setConnectAttempts(attempts);
       if (attempts >= MAX_CONNECT_ATTEMPTS) {
@@ -215,6 +229,11 @@ export const jam = {
   reportDuration: (trackId: string, durationMs: number) =>
     fire('track:duration', { trackId, durationMs: Math.round(durationMs) }),
 };
+
+/** The stable code of a JamError (server or client), or `fallback` for anything else. */
+export function errorCode(error: unknown, fallback: string): string {
+  return error instanceof JamError ? error.code : fallback;
+}
 
 export function errorMessage(error: unknown, fallback = 'Something went wrong'): string {
   if (error instanceof Error && error.message) return error.message;

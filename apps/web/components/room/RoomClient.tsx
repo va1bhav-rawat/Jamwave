@@ -2,7 +2,7 @@
 
 import { ListMusic, MessageCircle, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { errorMessage, joinRoom } from '@/lib/jamClient';
+import { errorCode, errorMessage, joinRoom } from '@/lib/jamClient';
 import { session } from '@/lib/session';
 import { useRoomStore } from '@/lib/store';
 import { useClockSync } from '@/lib/useClockSync';
@@ -54,7 +54,9 @@ export function RoomClient({ code }: { code: string }) {
     const nickname = session.getNickname();
     if (identity && nickname) {
       joinRoom(code, nickname).catch((err) =>
-        useRoomStore.getState().setError({ code: 'JOIN_FAILED', message: errorMessage(err) }),
+        useRoomStore
+          .getState()
+          .setError({ code: errorCode(err, 'JOIN_FAILED'), message: errorMessage(err) }),
       );
     }
   }, [code, setVolume, setVideoSize]);

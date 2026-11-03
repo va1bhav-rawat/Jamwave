@@ -10,7 +10,7 @@ import { WakingServerHint } from '@/components/marketing/WakingServerHint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { errorMessage, joinRoom } from '@/lib/jamClient';
+import { errorCode, errorMessage, joinRoom } from '@/lib/jamClient';
 import { session } from '@/lib/session';
 import { useRoomStore, type ClientError, type RoomStatus } from '@/lib/store';
 import { useLastQueue, useStoredNickname } from '@/lib/useBrowser';
@@ -45,8 +45,9 @@ export function JoinGate({
     try {
       await joinRoom(code, nickname);
     } catch (err) {
-      const errCode = err instanceof Error && 'code' in err ? String(err.code) : 'JOIN_FAILED';
-      useRoomStore.getState().setError({ code: errCode, message: errorMessage(err) });
+      useRoomStore
+        .getState()
+        .setError({ code: errorCode(err, 'JOIN_FAILED'), message: errorMessage(err) });
     }
   };
 

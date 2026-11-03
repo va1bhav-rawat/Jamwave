@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { resolveClientIp } from '../handlers/context';
 import { LruCache } from '../lib/lru';
 import { SlidingWindowLimiter } from '../lib/rateLimit';
 
@@ -31,5 +32,33 @@ describe('SlidingWindowLimiter', () => {
     expect(limiter.tryAcquire('k').ok).toBe(true);
     limiter.prune();
     expect(limiter.size).toBe(1);
+  });
+
+  it('forgets a key on demand', () => {
+    const limiter = new SlidingWindowLimiter(1, 1_000, () => 5);
+    expect(limiter.tryAcquire('k').ok).toBe(true);
+    expect(limiter.tryAcquire('k').ok).toBe(false);
+    limiter.forget('k');
+    expect(limiter.tryAcquire('k').ok).toBe(true);
+  });
+});
+
+describe('resolveClientIp', () => {
+  it('reads the proxy-written entry from the end, never the client-written start', () => {
+    expect(resolveClientIp('spoofed, 203.0.113.9', '10.0.0.1', 1)).toBe('203.0.113.9');
+    expect(resolveClientIp('spoofed, 203.0.113.9, 198.51.100.1', '10.0.0.1', 2)).toBe(
+      '203.0.113.9',
+    );
+    expect(resolveClientIp(['spoofed, 203.0.113.9', '198.51.100.1'], '10.0.0.1', 1)).toBe(
+      '198.51.100.1',
+    );
+    expect(resolveClientIp(' 203.0.113.9 ', '10.0.0.1', 1)).toBe('203.0.113.9');
+  });
+
+  it('falls back to the socket address when the header cannot be trusted', () => {
+    expect(resolveClientIp('spoofed, 203.0.113.9', '10.0.0.1', 0)).toBe('10.0.0.1');
+    expect(resolveClientIp(undefined, '10.0.0.1', 1)).toBe('10.0.0.1');
+    expect(resolveClientIp('203.0.113.9', '10.0.0.1', 2)).toBe('10.0.0.1');
+    expect(resolveClientIp(undefined, undefined, 1)).toBe('unknown');
   });
 });

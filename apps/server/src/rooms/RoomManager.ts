@@ -248,6 +248,13 @@ export class RoomManager {
     return closed;
   }
 
+  /** Close every live room (server shutdown). Returns how many were closed. */
+  closeAll(reason: RoomClosedReason): number {
+    const rooms = [...this.rooms.values()];
+    for (const room of rooms) this.closeRoom(room, reason);
+    return rooms.length;
+  }
+
   closeRoom(room: Room, reason: RoomClosedReason): void {
     const endTimer = this.endTimers.get(room.code);
     if (endTimer) clearTimeout(endTimer);

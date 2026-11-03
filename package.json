@@ -2,6 +2,7 @@
   "name": "jamwave",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Jamwave — free, synced music jam sessions in the browser.",
   "packageManager": "pnpm@12.4.1",
   "engines": {

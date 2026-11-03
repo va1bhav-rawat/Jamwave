@@ -13,8 +13,16 @@ export interface HttpDeps {
 
 const PREVIEW_RE = /^\/api\/rooms\/([A-Za-z0-9-]{6,8})\/preview\/?$/;
 
+/** Applied to every plain HTTP response (Socket.IO's own transport responses are not routed here). */
+const SECURITY_HEADERS = {
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'no-referrer',
+  'x-frame-options': 'DENY',
+} as const;
+
 function json(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, {
+    ...SECURITY_HEADERS,
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
   });
@@ -35,7 +43,7 @@ export function createRequestHandler(deps: HttpDeps) {
     }
     if (req.method === 'OPTIONS') {
       res.setHeader('access-control-allow-methods', 'GET, OPTIONS');
-      res.writeHead(204);
+      res.writeHead(204, SECURITY_HEADERS);
       res.end();
       return;
     }

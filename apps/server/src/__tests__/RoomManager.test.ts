@@ -185,6 +185,18 @@ describe('RoomManager', () => {
     );
   });
 
+  it('closes every room on shutdown with the restart reason', () => {
+    const { manager, closed } = build();
+    const a = manager.createRoom({ hostName: 'Ana', socketId: 's1' });
+    const b = manager.createRoom({ hostName: 'Ben', socketId: 's2' });
+    expect(manager.closeAll('server_restart')).toBe(2);
+    expect(closed.sort()).toEqual(
+      [`${a.room.code}:server_restart`, `${b.room.code}:server_restart`].sort(),
+    );
+    expect(manager.stats().rooms).toBe(0);
+    expect(manager.closeAll('server_restart')).toBe(0);
+  });
+
   it('reports stats', () => {
     const { manager } = build();
     const { room } = manager.createRoom({ hostName: 'Ana', socketId: 's1' });
