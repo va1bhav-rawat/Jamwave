@@ -16,6 +16,8 @@ const identityKey = (code: string) => `jamwave:identity:${code}`;
 /** How many recent jams to offer on the landing page, and for how long. */
 export const RECENT_JAMS_MAX = 5;
 export const RECENT_JAMS_TTL_MS = 24 * 60 * 60_000;
+/** YouTube API data (titles, thumbnails) must not be kept longer than 30 days. */
+export const LAST_QUEUE_TTL_MS = 30 * 24 * 60 * 60_000;
 
 export interface Identity {
   participantId: string;
@@ -161,7 +163,12 @@ export const session = {
     write(local, RECENT_JAMS_KEY, rest.length > 0 ? JSON.stringify(rest) : null);
   },
   getLastQueue(): SavedQueue | null {
-    return readLastQueue();
+    const saved = readLastQueue();
+    if (saved && Date.now() - saved.savedAt > LAST_QUEUE_TTL_MS) {
+      write(local, LAST_QUEUE_KEY, null);
+      return null;
+    }
+    return saved;
   },
   saveLastQueue(saved: Omit<SavedQueue, 'savedAt'>): void {
     write(local, LAST_QUEUE_KEY, JSON.stringify({ ...saved, savedAt: Date.now() }));

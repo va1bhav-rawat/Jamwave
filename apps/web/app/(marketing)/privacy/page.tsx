@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
 
+/** Public contact for privacy questions and deletion requests (required by YouTube API policies). */
+const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? 'vaibhavr325@gmail.com';
+
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description: 'What Jamwave stores, what it does not, and how YouTube playback is handled.',
@@ -9,7 +12,7 @@ export default function PrivacyPage() {
   return (
     <article className="prose-invert mx-auto max-w-3xl px-4 py-16 sm:px-6">
       <h1 className="text-4xl font-bold tracking-tight">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-fg-subtle">Last updated: 26 October 2026</p>
+      <p className="mt-2 text-sm text-fg-subtle">Last updated: 2 November 2026</p>
 
       <section className="mt-10 space-y-4 text-fg-muted">
         <h2 className="text-xl font-semibold text-fg">The short version</h2>
@@ -74,9 +77,38 @@ export default function PrivacyPage() {
           >
             Google Privacy Policy
           </a>
-          . Jamwave does not store any YouTube user data; search queries are sent to YouTube only to
-          find videos and may be cached briefly on our server to reduce repeated requests.
+          . Jamwave does not use YouTube sign-in and never accesses anyone&apos;s YouTube account or
+          personal YouTube data.
         </p>
+        <p>
+          What we do use from YouTube API Services is public video information: titles, channel
+          names, thumbnails and durations. Search queries are sent to YouTube to find videos.
+          Results are shown to you and, when you add a song, to the other people in your jam. Our
+          server keeps search results in memory for at most 24 hours to avoid repeating the same
+          request, and the last queue you listened to is kept in your browser for at most 30 days.
+          We do not share this information with anyone else.
+        </p>
+      </section>
+
+      <section className="mt-10 space-y-4 text-fg-muted">
+        <h2 className="text-xl font-semibold text-fg">Deleting your data</h2>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>
+            Jam content is deleted automatically ten minutes after the last person leaves a jam.
+          </li>
+          <li>
+            Search results cached on our server are deleted automatically after at most 24 hours.
+          </li>
+          <li>
+            Everything stored in your browser (nickname, preferences, recent jams, last queue) can
+            be removed at any time by clearing this site&apos;s data in your browser settings. A
+            saved queue is removed automatically after 30 days.
+          </li>
+          <li>
+            You can also ask us to delete anything related to you by writing to the contact address
+            below; we will reply within 7 days.
+          </li>
+        </ul>
       </section>
 
       <section className="mt-10 space-y-4 text-fg-muted">
@@ -88,7 +120,13 @@ export default function PrivacyPage() {
 
       <section className="mt-10 space-y-4 text-fg-muted">
         <h2 className="text-xl font-semibold text-fg">Contact</h2>
-        <p>Questions about privacy? Reach us through the contact details on the Jamwave website.</p>
+        <p>
+          Questions or deletion requests:{' '}
+          <a className="text-fg underline" href={`mailto:${CONTACT_EMAIL}`}>
+            {CONTACT_EMAIL}
+          </a>
+          .
+        </p>
       </section>
     </article>
   );
