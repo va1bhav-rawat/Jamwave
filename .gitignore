@@ -21,3 +21,7 @@ next-env.d.ts
 *.log
 .turbo/
 .vercel
+
+# private notes: only the README is published
+*.md
+!README.md

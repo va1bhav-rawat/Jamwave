@@ -32,7 +32,7 @@ Music plays through YouTube's official embedded player, so the catalogue is enor
 apps/web        Next.js app (landing + jam room UI)
 apps/server     Socket.IO realtime server (rooms, clock, YouTube provider)
 packages/shared Types, events, schemas and sync helpers used by both
-docs/           PRD, architecture, roadmap, marketing plan
+docs/           Private planning notes (not published)
 ```
 
 ## Quick start
@@ -98,4 +98,4 @@ Or run both with Docker on one machine:
 docker compose up --build
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how sync works and [docs/ROADMAP.md](docs/ROADMAP.md) for what comes next.
+Sync works on a server-owned clock: the server stores when each track started, and every player follows that position, correcting only where the video is already buffered so slow connections do not stutter.
