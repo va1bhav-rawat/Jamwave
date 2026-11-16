@@ -61,25 +61,23 @@ export default async function PeoplePage() {
       <div className="mt-6">
         <PeopleSearch signedIn={!!session} />
       </div>
-      {session ? (
-        <>
-          <PeopleList title="Friend requests" people={incoming} relation="incoming" />
-          <PeopleList
-            title="Your friends"
-            people={friends}
-            relation="friends"
-            empty="No friends yet. Search for a username above to add your first."
-          />
-          <PeopleList title="Requests you sent" people={outgoing} relation="outgoing" />
-        </>
+      <>
+        <PeopleList title="Friend requests" people={incoming} relation="incoming" />
+        <PeopleList
+          title="Your friends"
+          people={friends}
+          relation="friends"
+          empty="No friends yet. Search for a username above to add your first."
+        />
+        <PeopleList title="Requests you sent" people={outgoing} relation="outgoing" />
+      </>
       ) : (
-        <p className="mt-8 rounded-2xl border border-border bg-surface/40 p-4 text-sm text-fg-muted">
-          <Link href="/login?next=/people" className="font-medium text-fg underline">
-            Sign in
-          </Link>{' '}
-          to add friends and see your requests.
-        </p>
-      )}
+      <p className="mt-8 rounded-2xl border border-border bg-surface/40 p-4 text-sm text-fg-muted">
+        <Link href="/login?next=/people" className="font-medium text-fg underline">
+          Sign in
+        </Link>{' '}
+        to add friends and see your requests.
+      </p>
     </>
   );
 }
