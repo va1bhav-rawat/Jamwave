@@ -17,19 +17,24 @@ export function StartJamDialog({
   children,
   seed,
   seedName,
+  seedKind = 'rebuild',
 }: {
   children: ReactNode;
   /** Tracks to queue up right after the jam is created (rebuilding a jam that ended). */
   seed?: SearchResult[];
   /** Suggested jam name when rebuilding. */
   seedName?: string;
+  /** Where the seed comes from: an ended jam being rebuilt, or a playlist. */
+  seedKind?: 'rebuild' | 'playlist';
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [roomName, setRoomName] = useState('');
   const [busy, setBusy] = useState(false);
-  const rebuilding = !!seed && seed.length > 0;
+  const seeded = !!seed && seed.length > 0;
+  const rebuilding = seeded && seedKind === 'rebuild';
+  const fromPlaylist = seeded && seedKind === 'playlist';
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -38,12 +43,14 @@ export function StartJamDialog({
     setBusy(true);
     try {
       const code = await createRoom(nickname, roomName);
-      if (rebuilding) {
+      if (seeded) {
         try {
-          const added = await seedQueue(seed);
-          toast.success(`${added} song${added === 1 ? '' : 's'} back in the queue`);
+          const added = await seedQueue(seed.slice(0, LIMITS.MAX_QUEUE));
+          toast.success(
+            `${added} song${added === 1 ? '' : 's'} ${rebuilding ? 'back in' : 'added to'} the queue`,
+          );
         } catch (error) {
-          toast.error(errorMessage(error, 'Could not restore the queue'));
+          toast.error(errorMessage(error, 'Could not fill the queue'));
         }
       }
       router.push(`/jam/${code}`);
@@ -71,7 +78,9 @@ export function StartJamDialog({
         description={
           rebuilding
             ? `Pick a nickname. Your ${seed.length} song${seed.length === 1 ? '' : 's'} will be queued up again, and you'll get a fresh link to share.`
-            : "Pick a nickname. You'll get a link and a code to share with anyone."
+            : fromPlaylist
+              ? `Pick a nickname. The playlist's ${seed.length} song${seed.length === 1 ? '' : 's'} will be queued up, and you'll get a link to share.`
+              : "Pick a nickname. You'll get a link and a code to share with anyone."
         }
       >
         <form onSubmit={submit} className="space-y-4">

@@ -1,6 +1,6 @@
 'use client';
 
-import { Crown, MoreHorizontal } from 'lucide-react';
+import { Crown, Headphones, MoreHorizontal, SlidersHorizontal, UserMinus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '@/components/ui/dropdown';
 import { errorMessage, jam } from '@/lib/jamClient';
@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 
 export function Participants() {
   const participants = useRoomStore((s) => s.snapshot?.participants ?? []);
-  const everyoneControls = useRoomStore((s) => s.snapshot?.settings.everyoneControls ?? true);
   const me = useRoomStore(selectMe);
   const isHost = useRoomStore(selectIsHost);
   const connected = participants.filter((p) => p.connected).length;
@@ -57,7 +56,7 @@ export function Participants() {
                   ? 'away · reconnecting'
                   : p.isHost
                     ? 'host'
-                    : everyoneControls
+                    : p.canControl
                       ? 'can control'
                       : 'listener'}
               </div>
@@ -79,6 +78,34 @@ export function Participants() {
                     }
                   >
                     <Crown className="h-4 w-4 text-amber-400" /> Make host
+                  </DropdownItem>
+                  <DropdownItem
+                    onSelect={() =>
+                      jam
+                        .setParticipantControl(p.id, !p.canControl)
+                        .catch((error) => toast.error(errorMessage(error)))
+                    }
+                  >
+                    {p.canControl ? (
+                      <>
+                        <Headphones className="h-4 w-4" /> Make listener
+                      </>
+                    ) : (
+                      <>
+                        <SlidersHorizontal className="h-4 w-4" /> Allow control
+                      </>
+                    )}
+                  </DropdownItem>
+                  <DropdownItem
+                    className="text-red-300"
+                    onSelect={() =>
+                      jam
+                        .removeParticipant(p.id)
+                        .then(() => toast.success(`${p.name} was removed`))
+                        .catch((error) => toast.error(errorMessage(error)))
+                    }
+                  >
+                    <UserMinus className="h-4 w-4" /> Remove from jam
                   </DropdownItem>
                 </DropdownContent>
               </Dropdown>

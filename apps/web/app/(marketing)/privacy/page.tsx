@@ -12,7 +12,11 @@ export default function PrivacyPage() {
   return (
     <article className="prose-invert mx-auto max-w-3xl px-4 py-16 sm:px-6">
       <h1 className="text-4xl font-bold tracking-tight">Privacy Policy</h1>
+<<<<<<< Updated upstream
       <p className="mt-2 text-sm text-fg-subtle">Last updated: 2 November 2026</p>
+=======
+      <p className="mt-2 text-sm text-fg-subtle">Last updated: 16 November 2026</p>
+>>>>>>> Stashed changes
 
       <section className="mt-10 space-y-4 text-fg-muted">
         <h2 className="text-xl font-semibold text-fg">The short version</h2>
@@ -31,6 +35,22 @@ export default function PrivacyPage() {
             it.
           </li>
           <li>
+<<<<<<< Updated upstream
+=======
+            <strong className="text-fg">Account (optional).</strong> If you create an account, we
+            store your username, your email address and a hashed password in our database. If you
+            sign in with Google instead, we receive your name, email address and profile picture
+            from Google and store those; we never see your Google password. A cookie keeps you
+            signed in. Your username is visible to other people; your email address is not.
+          </li>
+          <li>
+            <strong className="text-fg">Playlists and friends (accounts only).</strong> Playlists
+            you create, and the list of people you are friends with, are stored in our database and
+            are public: anyone can open your profile and see them. Friend requests you send are
+            visible to the person you sent them to.
+          </li>
+          <li>
+>>>>>>> Stashed changes
             <strong className="text-fg">Jam content.</strong> The queue, playback state, chat
             messages and reactions of a jam are held in the memory of our realtime server only while
             the jam is active. A jam is deleted ten minutes after the last participant leaves. We do

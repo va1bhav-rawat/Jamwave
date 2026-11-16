@@ -19,13 +19,14 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Track } from '@jamwave/shared';
-import { GripVertical, Play, RotateCcw, X } from 'lucide-react';
+import { BookmarkPlus, GripVertical, Play, RotateCcw, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { errorMessage, jam } from '@/lib/jamClient';
 import { selectCanControl, selectMe, useRoomStore } from '@/lib/store';
 import { cn, formatDuration, trackToSearchResult } from '@/lib/utils';
+import { SaveToPlaylistDialog } from '@/components/playlists/RoomPlaylists';
 import { Panel } from './Panel';
 import { Thumb } from './Thumb';
 
@@ -36,6 +37,7 @@ export function Queue() {
   const history = useRoomStore((s) => s.snapshot?.history ?? EMPTY);
   const canControl = useRoomStore(selectCanControl);
   const me = useRoomStore(selectMe);
+  const roomName = useRoomStore((s) => s.snapshot?.settings.name ?? '');
   const [local, setLocal] = useState<{ base: Track[]; order: Track[] } | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -60,6 +62,15 @@ export function Queue() {
 
   const totalMs = items.reduce((sum, t) => sum + t.durationMs, 0);
 
+  /** What is playing plus everything queued, read when the save dialog opens. */
+  const currentTracks = () => {
+    const snapshot = useRoomStore.getState().snapshot;
+    if (!snapshot) return [];
+    return [snapshot.playback.track, ...snapshot.queue]
+      .filter((track) => track !== null)
+      .map(trackToSearchResult);
+  };
+
   return (
     <Panel
       title={
@@ -71,11 +82,18 @@ export function Queue() {
           </span>
         </span>
       }
+      actions={
+        <SaveToPlaylistDialog tracks={currentTracks} suggestedName={roomName}>
+          <Button variant="ghost" size="sm">
+            <BookmarkPlus className="h-4 w-4" /> Save
+          </Button>
+        </SaveToPlaylistDialog>
+      }
       className="max-h-[70dvh] lg:max-h-none"
     >
       {items.length === 0 ? (
         <p className="px-4 py-8 text-center text-sm text-fg-muted">
-          The queue is empty. Add a song above — anyone can.
+          The queue is empty. Add a song above.
         </p>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>

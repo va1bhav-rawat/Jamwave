@@ -1,9 +1,10 @@
 'use client';
 
 import { LIMITS, type SearchResult } from '@jamwave/shared';
-import { Check, ListPlus, Plus, Search, Sparkles, X } from 'lucide-react';
+import { BookmarkPlus, Check, ListMusic, ListPlus, Plus, Search, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { PlaylistPicker, SaveToPlaylistDialog } from '@/components/playlists/RoomPlaylists';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
@@ -109,7 +110,19 @@ export function AddTrack() {
           {busy ? <Spinner className="border-white/40 border-t-white" /> : 'Find'}
         </Button>
       </form>
+      <div className="mt-2 flex">
+        <PlaylistPicker>
+          <Button variant="ghost" size="sm" disabled={!canControl}>
+            <ListMusic className="h-4 w-4" /> My playlists
+          </Button>
+        </PlaylistPicker>
+      </div>
       {notice ? <p className="mt-2 px-1 text-sm text-fg-muted">{notice}</p> : null}
+      {!canControl ? (
+        <p className="mt-2 px-1 text-sm text-fg-muted">
+          You are listening. The host decides who can add songs and control the music.
+        </p>
+      ) : null}
 
       {roomIsSilent && results.length === 0 && !busy ? (
         <div className="mt-3 px-1">
@@ -139,7 +152,7 @@ export function AddTrack() {
             </span>
             <div className="flex gap-1">
               {results.length > 1 ? (
-                <Button variant="ghost" size="sm" onClick={addAll}>
+                <Button variant="ghost" size="sm" onClick={addAll} disabled={!canControl}>
                   <ListPlus className="h-4 w-4" /> Add all
                 </Button>
               ) : null}
@@ -178,11 +191,17 @@ export function AddTrack() {
                       Next
                     </Button>
                   ) : null}
+                  <SaveToPlaylistDialog tracks={() => [item]}>
+                    <Button variant="ghost" size="icon" aria-label="Save to a playlist">
+                      <BookmarkPlus className="h-4 w-4" />
+                    </Button>
+                  </SaveToPlaylistDialog>
                   <Button
                     variant={done ? 'secondary' : 'primary'}
                     size="icon"
                     aria-label={done ? 'Added' : 'Add to queue'}
                     onClick={() => add(item)}
+                    disabled={!canControl}
                   >
                     {done ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                   </Button>

@@ -30,6 +30,11 @@ export interface Participant {
   name: string;
   color: string;
   isHost: boolean;
+  /**
+   * May play / pause / seek / skip and add or reorder songs. Always true for the host; for
+   * everyone else the host decides, per person.
+   */
+  canControl: boolean;
   connected: boolean;
   joinedAt: number;
 }
@@ -50,7 +55,10 @@ export interface PlaybackState {
 
 export interface RoomSettings {
   name: string;
-  /** When false only the host can play / pause / seek / skip / reorder. */
+  /**
+   * The permission new joiners start with. Changing it applies to everyone already in the
+   * room; after that the host can still allow or restrict individual people.
+   */
   everyoneControls: boolean;
   voteSkipEnabled: boolean;
 }

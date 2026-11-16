@@ -216,6 +216,6 @@ export function selectIsHost(state: RoomStore): boolean {
 
 export function selectCanControl(state: RoomStore): boolean {
   const me = selectMe(state);
-  if (!me || !state.snapshot) return false;
-  return me.isHost || state.snapshot.settings.everyoneControls;
+  if (!me) return false;
+  return me.isHost || me.canControl;
 }

@@ -10,7 +10,9 @@ Music plays through YouTube's official embedded player, so the catalogue is enor
 - Join with a nickname only — no sign-up
 - Search YouTube or paste a video / playlist link into a shared queue (reorder, play next, remove)
 - Server-authoritative sync: every browser follows one master clock, drift corrected under ~300 ms
-- Play / pause / seek / skip (host-only or everyone, host decides) and majority vote-to-skip
+- Play / pause / seek / skip / add songs: the host decides who may, for everyone at once or person by person, and can remove people from the jam; majority vote-to-skip
+- Playlists for accounts: save songs from a jam or by YouTube link, add a playlist to any jam's queue, or start a jam from one
+- Public profiles (`/u/<username>`) with playlists and friends; find people and send friend requests on `/people`
 - Participants list, host handoff on disconnect, seat reclaim on refresh
 - Chat and floating emoji reactions
 - Rooms live in memory and expire 10 minutes after the last listener leaves; the queue is remembered on each device so an ended jam can be rebuilt in one tap, and recent jams are offered on the landing page

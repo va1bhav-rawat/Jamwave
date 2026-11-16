@@ -56,9 +56,10 @@ export function SettingsDialog({ children }: { children: ReactNode }) {
         <div className="mt-5 divide-y divide-border rounded-xl border border-border">
           <label className="flex cursor-pointer items-center justify-between gap-4 p-4">
             <span>
-              <span className="block text-sm font-medium">Everyone can control playback</span>
+              <span className="block text-sm font-medium">Everyone can control the music</span>
               <span className="block text-xs text-fg-muted">
-                Play, pause, seek, skip and reorder. Turn off to keep it host-only.
+                Play, pause, seek, skip, add and reorder songs. Turn off to make everyone a
+                listener, then allow individual people from the People list.
               </span>
             </span>
             <Switch
