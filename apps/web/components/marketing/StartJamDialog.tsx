@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { useAccountName } from '@/lib/auth-client';
 import { createRoom, errorMessage, seedQueue } from '@/lib/jamClient';
 import { session } from '@/lib/session';
 import { useRoomStore } from '@/lib/store';
@@ -28,6 +29,7 @@ export function StartJamDialog({
   seedKind?: 'rebuild' | 'playlist';
 }) {
   const router = useRouter();
+  const accountName = useAccountName();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [roomName, setRoomName] = useState('');
@@ -66,7 +68,8 @@ export function StartJamDialog({
       onOpenChange={(next) => {
         if (busy) return;
         if (next) {
-          setName((current) => current || session.getNickname() || '');
+          // Signed-in people jam under their username unless they type something else.
+          setName((current) => current || accountName || session.getNickname() || '');
           setRoomName((current) => current || seedName || '');
         }
         setOpen(next);

@@ -8,6 +8,7 @@ Music plays through YouTube's official embedded player, so the catalogue is enor
 
 - Create a jam in two taps; share a link, code or QR
 - Join with a nickname only — no sign-up
+- Optional accounts: sign up with email + password or with Google, then optionally pick a unique username (it defaults to the part of the email before the @); sign in with username or email (stored in MongoDB)
 - Search YouTube or paste a video / playlist link into a shared queue (reorder, play next, remove)
 - Server-authoritative sync: every browser follows one master clock, drift corrected under ~300 ms
 - Play / pause / seek / skip / add songs: the host decides who may, for everyone at once or person by person, and can remove people from the jam; majority vote-to-skip
@@ -27,6 +28,7 @@ Music plays through YouTube's official embedded player, so the catalogue is enor
 | --------------- | ------------------------------------------------------------------------------------- |
 | Web             | Next.js 16 (App Router), React 19, Tailwind CSS 4, Radix primitives, Zustand, dnd-kit |
 | Realtime server | Node 24, Socket.IO 4, zod, pino                                                       |
+| Accounts        | Better Auth, MongoDB                                                                  |
 | Shared          | `@jamwave/shared`: types, event catalogue, zod schemas, sync math                     |
 | Tooling         | pnpm workspaces, TypeScript 5.9, Vitest, ESLint, Prettier, tsup                       |
 
@@ -39,7 +41,7 @@ docs/           Private planning notes (not published)
 
 ## Quick start
 
-Requirements: Node 24+, pnpm 12+ (`corepack enable` gives you pnpm).
+Requirements: Node 24+, pnpm 12+ (`corepack enable` gives you pnpm), and MongoDB for accounts (a local `mongod` or a MongoDB Atlas connection string). Jams work without MongoDB; only sign-up and sign-in need it.
 
 ```bash
 pnpm install
@@ -62,24 +64,27 @@ Open http://localhost:3000, start a jam, then open the jam link in a second brow
 
 All variables live in one root `.env` (see `.env.example`).
 
-| Variable                      | Used by | Default                    | Notes                                                                                                                 |
-| ----------------------------- | ------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `PORT`                        | server  | `4000`                     |                                                                                                                       |
-| `CORS_ORIGIN`                 | server  | `http://localhost:3000`    | Comma-separated browser origins                                                                                       |
-| `YOUTUBE_API_KEY`             | server  | —                          | Enables search and playlist import. Without it, link pasting still works via oEmbed                                   |
-| `ROOM_EMPTY_TTL_MINUTES`      | server  | `10`                       | How long an empty room survives                                                                                       |
-| `RECLAIM_GRACE_SECONDS`       | server  | `60`                       | Reconnect window that keeps a seat (and the host role)                                                                |
-| `SEARCH_RATE_PER_MINUTE`      | server  | `10`                       | Per-participant search limit                                                                                          |
-| `SEARCH_DAILY_CAP`            | server  | `95`                       | Global `search.list` budget per day (YouTube's default quota allows 100)                                              |
-| `ROOM_CREATE_RATE_PER_MINUTE` | server  | `5`                        | New jams per minute per client address                                                                                |
-| `ROOM_JOIN_RATE_PER_MINUTE`   | server  | `30`                       | Fresh joins per minute per client address (reclaims after a refresh are free)                                         |
-| `MAX_ROOMS`                   | server  | `5000`                     | Hard cap on live rooms; creation answers `SERVER_BUSY` beyond it                                                      |
-| `TRUST_PROXY_HOPS`            | server  | `1`                        | Proxies in front of the server; the client IP is read that far from the end of `x-forwarded-for` (0 = socket address) |
-| `MAX_CONNECTIONS_PER_IP`      | server  | `20`                       | Sockets allowed per client address                                                                                    |
-| `LOG_LEVEL`                   | server  | `info`                     | pino level                                                                                                            |
-| `NEXT_PUBLIC_SOCKET_URL`      | web     | `http://localhost:4000`    | Public URL of the realtime server                                                                                     |
-| `NEXT_PUBLIC_APP_URL`         | web     | `http://localhost:3000`    | Public URL of the web app (share links, metadata)                                                                     |
-| `SOCKET_INTERNAL_URL`         | web     | = `NEXT_PUBLIC_SOCKET_URL` | Server-side URL for link previews (e.g. a private network address)                                                    |
+| Variable                                    | Used by | Default                             | Notes                                                                                                                 |
+| ------------------------------------------- | ------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                                      | server  | `4000`                              |                                                                                                                       |
+| `CORS_ORIGIN`                               | server  | `http://localhost:3000`             | Comma-separated browser origins                                                                                       |
+| `YOUTUBE_API_KEY`                           | server  | —                                   | Enables search and playlist import. Without it, link pasting still works via oEmbed                                   |
+| `ROOM_EMPTY_TTL_MINUTES`                    | server  | `10`                                | How long an empty room survives                                                                                       |
+| `RECLAIM_GRACE_SECONDS`                     | server  | `60`                                | Reconnect window that keeps a seat (and the host role)                                                                |
+| `SEARCH_RATE_PER_MINUTE`                    | server  | `10`                                | Per-participant search limit                                                                                          |
+| `SEARCH_DAILY_CAP`                          | server  | `95`                                | Global `search.list` budget per day (YouTube's default quota allows 100)                                              |
+| `ROOM_CREATE_RATE_PER_MINUTE`               | server  | `5`                                 | New jams per minute per client address                                                                                |
+| `ROOM_JOIN_RATE_PER_MINUTE`                 | server  | `30`                                | Fresh joins per minute per client address (reclaims after a refresh are free)                                         |
+| `MAX_ROOMS`                                 | server  | `5000`                              | Hard cap on live rooms; creation answers `SERVER_BUSY` beyond it                                                      |
+| `TRUST_PROXY_HOPS`                          | server  | `1`                                 | Proxies in front of the server; the client IP is read that far from the end of `x-forwarded-for` (0 = socket address) |
+| `MAX_CONNECTIONS_PER_IP`                    | server  | `20`                                | Sockets allowed per client address                                                                                    |
+| `LOG_LEVEL`                                 | server  | `info`                              | pino level                                                                                                            |
+| `NEXT_PUBLIC_SOCKET_URL`                    | web     | `http://localhost:4000`             | Public URL of the realtime server                                                                                     |
+| `NEXT_PUBLIC_APP_URL`                       | web     | `http://localhost:3000`             | Public URL of the web app (share links, metadata)                                                                     |
+| `SOCKET_INTERNAL_URL`                       | web     | = `NEXT_PUBLIC_SOCKET_URL`          | Server-side URL for link previews (e.g. a private network address)                                                    |
+| `MONGODB_URI`                               | web     | `mongodb://127.0.0.1:27017/jamwave` | MongoDB connection string for accounts, including the database name                                                   |
+| `BETTER_AUTH_SECRET`                        | web     | —                                   | Signs session cookies; required in production (`openssl rand -base64 32`)                                             |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | web     | —                                   | Enables "Continue with Google". Redirect URI: `<NEXT_PUBLIC_APP_URL>/api/auth/callback/google`                        |
 
 ### Getting a YouTube API key
 

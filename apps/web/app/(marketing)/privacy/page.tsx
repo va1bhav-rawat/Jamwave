@@ -12,17 +12,13 @@ export default function PrivacyPage() {
   return (
     <article className="prose-invert mx-auto max-w-3xl px-4 py-16 sm:px-6">
       <h1 className="text-4xl font-bold tracking-tight">Privacy Policy</h1>
-<<<<<<< Updated upstream
-      <p className="mt-2 text-sm text-fg-subtle">Last updated: 2 November 2026</p>
-=======
       <p className="mt-2 text-sm text-fg-subtle">Last updated: 16 November 2026</p>
->>>>>>> Stashed changes
 
       <section className="mt-10 space-y-4 text-fg-muted">
         <h2 className="text-xl font-semibold text-fg">The short version</h2>
         <p>
-          Jamwave has no accounts and no advertising. We keep as little as we can, for as short a
-          time as we can, and we never sell data.
+          Jamwave has no advertising, and you can jam without an account. We keep as little as we
+          can, for as short a time as we can, and we never sell data.
         </p>
       </section>
 
@@ -35,8 +31,6 @@ export default function PrivacyPage() {
             it.
           </li>
           <li>
-<<<<<<< Updated upstream
-=======
             <strong className="text-fg">Account (optional).</strong> If you create an account, we
             store your username, your email address and a hashed password in our database. If you
             sign in with Google instead, we receive your name, email address and profile picture
@@ -50,7 +44,6 @@ export default function PrivacyPage() {
             visible to the person you sent them to.
           </li>
           <li>
->>>>>>> Stashed changes
             <strong className="text-fg">Jam content.</strong> The queue, playback state, chat
             messages and reactions of a jam are held in the memory of our realtime server only while
             the jam is active. A jam is deleted ten minutes after the last participant leaves. We do
