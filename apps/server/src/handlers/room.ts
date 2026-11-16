@@ -2,6 +2,8 @@ import {
   createRoomSchema,
   hostTransferSchema,
   joinRoomSchema,
+  participantControlSchema,
+  participantRemoveSchema,
   roomSettingsSchema,
   type JoinResult,
 } from '@jamwave/shared';
@@ -140,6 +142,43 @@ export function registerRoomHandlers(ctx: HandlerContext, socket: AppSocket): vo
       requireHost(membership);
       const input = parse(hostTransferSchema, payload);
       ctx.manager.transferHost(membership.room, input.participantId);
+      return null;
+    }),
+  );
+
+  socket.on('participant:control', (payload, ack) =>
+    respond(ctx, socket, ack, () => {
+      const membership = requireMembership(ctx, socket);
+      requireHost(membership);
+      const input = parse(participantControlSchema, payload);
+      ctx.manager.setParticipantControl(membership.room, input.participantId, input.canControl);
+      return null;
+    }),
+  );
+
+  socket.on('participant:remove', (payload, ack) =>
+    respond(ctx, socket, ack, () => {
+      const membership = requireMembership(ctx, socket);
+      requireHost(membership);
+      const input = parse(participantRemoveSchema, payload);
+      const { room, participant: host } = membership;
+      if (input.participantId === host.id) {
+        throw new AppError('FORBIDDEN', 'You cannot remove yourself. Leave the jam instead.');
+      }
+      const target = room.getParticipant(input.participantId);
+      if (!target) {
+        throw new AppError('PARTICIPANT_NOT_FOUND', 'That person is no longer in the jam');
+      }
+      // Detach their socket first so it stops receiving this room's updates.
+      const targetSocket = target.socketId ? ctx.io.sockets.sockets.get(target.socketId) : null;
+      if (targetSocket) {
+        targetSocket.leave(room.code);
+        targetSocket.data.roomCode = undefined;
+        targetSocket.data.participantId = undefined;
+        targetSocket.emit('room:closed', { reason: 'removed' });
+      }
+      ctx.manager.kick(room, input.participantId);
+      ctx.log.info({ code: room.code, participant: target.name }, 'participant removed by host');
       return null;
     }),
   );

@@ -45,6 +45,20 @@ services:
       - '3000:3000'
     environment:
       SOCKET_INTERNAL_URL: http://server:4000
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/jamwave}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     depends_on:
       - server
+      - mongo
     restart: unless-stopped
+
+  mongo:
+    image: mongo:8
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo-data:

@@ -12,13 +12,13 @@ export default function PrivacyPage() {
   return (
     <article className="prose-invert mx-auto max-w-3xl px-4 py-16 sm:px-6">
       <h1 className="text-4xl font-bold tracking-tight">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-fg-subtle">Last updated: 2 November 2026</p>
+      <p className="mt-2 text-sm text-fg-subtle">Last updated: 16 November 2026</p>
 
       <section className="mt-10 space-y-4 text-fg-muted">
         <h2 className="text-xl font-semibold text-fg">The short version</h2>
         <p>
-          Jamwave has no accounts and no advertising. We keep as little as we can, for as short a
-          time as we can, and we never sell data.
+          Jamwave has no advertising, and you can jam without an account. We keep as little as we
+          can, for as short a time as we can, and we never sell data.
         </p>
       </section>
 
@@ -29,6 +29,19 @@ export default function PrivacyPage() {
             <strong className="text-fg">Nickname.</strong> The name you type is shown to other
             people in the same jam. It is stored in your own browser so you do not have to retype
             it.
+          </li>
+          <li>
+            <strong className="text-fg">Account (optional).</strong> If you create an account, we
+            store your username, your email address and a hashed password in our database. If you
+            sign in with Google instead, we receive your name, email address and profile picture
+            from Google and store those; we never see your Google password. A cookie keeps you
+            signed in. Your username is visible to other people; your email address is not.
+          </li>
+          <li>
+            <strong className="text-fg">Playlists and friends (accounts only).</strong> Playlists
+            you create, and the list of people you are friends with, are stored in our database and
+            are public: anyone can open your profile and see them. Friend requests you send are
+            visible to the person you sent them to.
           </li>
           <li>
             <strong className="text-fg">Jam content.</strong> The queue, playback state, chat

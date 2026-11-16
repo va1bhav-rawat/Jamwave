@@ -82,6 +82,32 @@ describe('Room participants', () => {
     expect(room.canControl(host.id)).toBe(true);
   });
 
+  it('lets the host allow or restrict individual people', () => {
+    const { room } = makeRoom();
+    const host = room.addParticipant('Host', 's1');
+    const guest = room.addParticipant('Guest', 's2');
+    room.updateSettings({ everyoneControls: false });
+    // People who join a restricted jam start as listeners.
+    const late = room.addParticipant('Late', 's3');
+    expect(room.canControl(late.id)).toBe(false);
+
+    room.setParticipantControl(guest.id, true);
+    expect(room.canControl(guest.id)).toBe(true);
+    expect(room.canControl(late.id)).toBe(false);
+    const view = room.snapshot().participants;
+    expect(view.find((p) => p.id === guest.id)?.canControl).toBe(true);
+    expect(view.find((p) => p.id === late.id)?.canControl).toBe(false);
+    expect(view.find((p) => p.id === host.id)?.canControl).toBe(true);
+
+    room.setParticipantControl(guest.id, false);
+    expect(room.canControl(guest.id)).toBe(false);
+    // The switch sets everyone at once, and the host can never be restricted.
+    room.updateSettings({ everyoneControls: true });
+    expect(room.canControl(late.id)).toBe(true);
+    expect(() => room.setParticipantControl(host.id, false)).toThrowError(AppError);
+    expect(() => room.setParticipantControl('nobody', true)).toThrowError(AppError);
+  });
+
   it('rejects joins once full', () => {
     const { room } = makeRoom();
     for (let i = 0; i < LIMITS.MAX_PARTICIPANTS; i++) room.addParticipant(`P${i}`, `s${i}`);

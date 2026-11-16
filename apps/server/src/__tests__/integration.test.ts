@@ -213,6 +213,57 @@ describe('jamwave server end to end', () => {
     expect((await handoff).participants).toHaveLength(1);
   });
 
+  it('lets the host decide who controls the jam and remove people', async () => {
+    const host = client();
+    const created = await request<JoinResult>(host, 'room:create', { name: 'Host' });
+    const code = created.snapshot.code;
+    const guest = client();
+    const joined = await request<JoinResult>(guest, 'room:join', { code, name: 'Guest' });
+    const guestId = joined.self.participantId;
+
+    // Restricted: a listener can neither add songs nor control playback.
+    await request(host, 'room:settings', { everyoneControls: false });
+    await expect(request(guest, 'queue:add', { items: [result('a')] })).rejects.toThrow(
+      /FORBIDDEN/,
+    );
+    await expect(request(guest, 'playback:pause')).rejects.toThrow(/FORBIDDEN/);
+
+    // Only the host hands out control, and only the host removes people.
+    await expect(
+      request(guest, 'participant:control', { participantId: guestId, canControl: true }),
+    ).rejects.toThrow(/FORBIDDEN/);
+    await expect(
+      request(guest, 'participant:remove', { participantId: created.self.participantId }),
+    ).rejects.toThrow(/FORBIDDEN/);
+
+    const allowed = once(guest, 'room:state', (s) =>
+      s.participants.some((p) => p.id === guestId && p.canControl),
+    );
+    await request(host, 'participant:control', { participantId: guestId, canControl: true });
+    await allowed;
+    await expect(request(guest, 'queue:add', { items: [result('a')] })).resolves.toEqual({
+      added: 1,
+    });
+
+    // Removed: the guest is told, disappears from the room and is no longer a member.
+    await expect(
+      request(host, 'participant:remove', { participantId: created.self.participantId }),
+    ).rejects.toThrow(/FORBIDDEN/);
+    const told = once(guest, 'room:closed');
+    const gone = once(host, 'room:state', (s) => s.participants.length === 1);
+    await request(host, 'participant:remove', { participantId: guestId });
+    expect(await told).toEqual({ reason: 'removed' });
+    expect((await gone).participants[0]?.name).toBe('Host');
+    await expect(request(guest, 'chat:send', { text: 'hi' })).rejects.toThrow(/NOT_IN_ROOM/);
+    // Their old seat cannot be reclaimed; joining again is a fresh seat.
+    const back = await request<JoinResult>(guest, 'room:join', {
+      code,
+      name: 'Guest',
+      reclaim: joined.self,
+    });
+    expect(back.self.participantId).not.toBe(guestId);
+  });
+
   it('rejects invalid payloads and unknown rooms with stable codes', async () => {
     const socket = client();
     await expect(request(socket, 'room:join', { code: 'nope', name: 'x' })).rejects.toThrow(

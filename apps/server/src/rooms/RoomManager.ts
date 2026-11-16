@@ -177,6 +177,27 @@ export class RoomManager {
     this.commit(room, 'leave');
   }
 
+  /** Host removed someone. Returns their record so the caller can tell their socket. */
+  kick(room: Room, participantId: string): ParticipantRecord | null {
+    this.clearGrace(room.code, participantId);
+    const { removed } = room.removeParticipant(participantId);
+    if (!removed) return null;
+    this.system(room, `${removed.name} was removed by the host`);
+    this.commit(room, 'leave');
+    return removed;
+  }
+
+  setParticipantControl(room: Room, participantId: string, canControl: boolean): void {
+    const participant = room.setParticipantControl(participantId, canControl);
+    this.system(
+      room,
+      canControl
+        ? `${participant.name} can now control the music`
+        : `${participant.name} is now a listener`,
+    );
+    this.commit(room, 'settings');
+  }
+
   transferHost(room: Room, toParticipantId: string): void {
     room.transferHost(toParticipantId);
     const host = room.getParticipant(toParticipantId);

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { UserMenu } from '@/components/auth/UserMenu';
 import { Logo } from '@/components/brand/Logo';
 import { Button } from '@/components/ui/button';
 import { StartJamDialog } from './StartJamDialog';
@@ -15,6 +16,7 @@ export function Header() {
           <StartJamDialog>
             <Button size="sm">Start a jam</Button>
           </StartJamDialog>
+          <UserMenu />
         </div>
       </div>
     </header>

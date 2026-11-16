@@ -84,8 +84,24 @@ export class Room {
     return participantId === this.hostId;
   }
 
+  /** The host always has control; everyone else needs the host's permission. */
   canControl(participantId: string): boolean {
-    return this.isHost(participantId) || this.settings.everyoneControls;
+    if (this.isHost(participantId)) return true;
+    return this.participants.get(participantId)?.canControl ?? false;
+  }
+
+  /** Host decision for one person. The host's own permission cannot be taken away. */
+  setParticipantControl(participantId: string, canControl: boolean): ParticipantRecord {
+    const participant = this.participants.get(participantId);
+    if (!participant) {
+      throw new AppError('PARTICIPANT_NOT_FOUND', 'That person is no longer in the jam');
+    }
+    if (this.isHost(participantId)) {
+      throw new AppError('FORBIDDEN', 'The host always has control');
+    }
+    participant.canControl = canControl;
+    this.bump();
+    return participant;
   }
 
   private pickColor(): string {
@@ -114,6 +130,7 @@ export class Room {
       name,
       color: this.pickColor(),
       isHost: false,
+      canControl: this.settings.everyoneControls,
       connected: true,
       joinedAt: this.now(),
       secret: newSecret(),
@@ -201,8 +218,11 @@ export class Room {
 
   updateSettings(patch: Partial<RoomSettings>): void {
     if (patch.name !== undefined && patch.name.trim()) this.settings.name = patch.name.trim();
-    if (patch.everyoneControls !== undefined)
+    if (patch.everyoneControls !== undefined) {
       this.settings.everyoneControls = patch.everyoneControls;
+      // The switch is a "set everyone" action; individual choices can be made again afterwards.
+      for (const p of this.participants.values()) p.canControl = patch.everyoneControls;
+    }
     if (patch.voteSkipEnabled !== undefined) this.settings.voteSkipEnabled = patch.voteSkipEnabled;
     this.bump();
   }
@@ -407,11 +427,12 @@ export class Room {
   snapshot(): RoomSnapshot {
     const participants: Participant[] = [...this.participants.values()]
       .sort((a, b) => a.joinedAt - b.joinedAt)
-      .map(({ id, name, color, isHost, connected, joinedAt }) => ({
+      .map(({ id, name, color, isHost, canControl, connected, joinedAt }) => ({
         id,
         name,
         color,
         isHost,
+        canControl: isHost || canControl,
         connected,
         joinedAt,
       }));

@@ -14,7 +14,8 @@ export function registerQueueHandlers(ctx: HandlerContext, socket: AppSocket): v
     respond(ctx, socket, ack, () => {
       const membership = requireMembership(ctx, socket);
       const input = parse(queueAddSchema, payload);
-      if (input.playNext) requireControl(membership);
+      // Adding songs is part of controlling the jam; the host decides who may.
+      requireControl(membership);
       const { room, participant } = membership;
       const { added } = room.addTracks(
         input.items,

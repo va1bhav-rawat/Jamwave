@@ -112,7 +112,7 @@ export function requireMembership(ctx: HandlerContext, socket: AppSocket): Membe
 
 export function requireControl({ room, participant }: Membership): void {
   if (!room.canControl(participant.id)) {
-    throw new AppError('FORBIDDEN', 'Only the host can control playback in this jam');
+    throw new AppError('FORBIDDEN', 'The host has not given you control of this jam');
   }
 }
 

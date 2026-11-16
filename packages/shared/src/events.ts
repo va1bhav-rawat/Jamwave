@@ -2,6 +2,8 @@ import type {
   ChatSendPayload,
   CreateRoomPayload,
   HostTransferPayload,
+  ParticipantControlPayload,
+  ParticipantRemovePayload,
   JoinRoomPayload,
   PlaybackPlayPayload,
   PlaybackSeekPayload,
@@ -75,6 +77,10 @@ export interface ClientToServerEvents {
   'room:leave': (ack?: AckFn<null>) => void;
   'room:settings': (payload: RoomSettingsPayload, ack?: AckFn<null>) => void;
   'host:transfer': (payload: HostTransferPayload, ack?: AckFn<null>) => void;
+  /** Host only: allow or stop one person controlling the music and the queue. */
+  'participant:control': (payload: ParticipantControlPayload, ack?: AckFn<null>) => void;
+  /** Host only: remove someone from the jam. */
+  'participant:remove': (payload: ParticipantRemovePayload, ack?: AckFn<null>) => void;
 
   'queue:add': (payload: QueueAddPayload, ack?: AckFn<{ added: number }>) => void;
   'queue:remove': (payload: QueueRemovePayload, ack?: AckFn<null>) => void;
@@ -99,7 +105,8 @@ export interface ClientToServerEvents {
   'search:resolve': (payload: SearchResolvePayload, ack: AckFn<SearchResponse>) => void;
 }
 
-export type RoomClosedReason = 'expired' | 'host_closed' | 'server_restart';
+/** `removed` is sent only to a person the host removed; the jam itself carries on. */
+export type RoomClosedReason = 'expired' | 'host_closed' | 'server_restart' | 'removed';
 
 /** Events the realtime server pushes to browsers. */
 export interface ServerToClientEvents {

@@ -92,6 +92,13 @@ export const roomSettingsSchema = z.object({
 
 export const hostTransferSchema = z.object({ participantId: z.string().min(1) });
 
+export const participantControlSchema = z.object({
+  participantId: z.string().min(1).max(64),
+  canControl: z.boolean(),
+});
+
+export const participantRemoveSchema = z.object({ participantId: z.string().min(1).max(64) });
+
 export const timePingSchema = z.object({ t0: z.number() });
 
 export const searchQuerySchema = z.object({
@@ -117,6 +124,8 @@ export type ChatSendPayload = z.infer<typeof chatSendSchema>;
 export type ReactionSendPayload = z.infer<typeof reactionSendSchema>;
 export type RoomSettingsPayload = z.infer<typeof roomSettingsSchema>;
 export type HostTransferPayload = z.infer<typeof hostTransferSchema>;
+export type ParticipantControlPayload = z.infer<typeof participantControlSchema>;
+export type ParticipantRemovePayload = z.infer<typeof participantRemoveSchema>;
 export type TimePingPayload = z.infer<typeof timePingSchema>;
 export type SearchQueryPayload = z.infer<typeof searchQuerySchema>;
 export type SearchResolvePayload = z.infer<typeof searchResolveSchema>;

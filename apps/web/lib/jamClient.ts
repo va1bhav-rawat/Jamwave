@@ -222,6 +222,10 @@ export const jam = {
   react: (emoji: ReactionEmoji) => fire('reaction:send', { emoji }),
   updateSettings: (patch: RoomSettingsPayload) => request<null>('room:settings', patch),
   transferHost: (participantId: string) => request<null>('host:transfer', { participantId }),
+  setParticipantControl: (participantId: string, canControl: boolean) =>
+    request<null>('participant:control', { participantId, canControl }),
+  removeParticipant: (participantId: string) =>
+    request<null>('participant:remove', { participantId }),
   search: (q: string) => request<SearchResponse>('search:query', { q }),
   resolve: (url: string) => request<SearchResponse>('search:resolve', { url }),
   reportEnded: (trackId: string) => fire('track:ended', { trackId }),

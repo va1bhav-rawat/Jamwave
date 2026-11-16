@@ -10,6 +10,7 @@ import { WakingServerHint } from '@/components/marketing/WakingServerHint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { useAccountName } from '@/lib/auth-client';
 import { errorCode, errorMessage, joinRoom } from '@/lib/jamClient';
 import { session } from '@/lib/session';
 import { useRoomStore, type ClientError, type RoomStatus } from '@/lib/store';
@@ -25,10 +26,11 @@ export function JoinGate({
   error: ClientError | null;
 }) {
   const stored = useStoredNickname();
+  const accountName = useAccountName();
   const attempts = useRoomStore((s) => s.connectAttempts);
   const saved = useLastQueue();
   const [typed, setTyped] = useState<string | null>(null);
-  const name = typed ?? stored;
+  const name = typed ?? (accountName || stored);
   const busy = status === 'connecting' || status === 'joining';
   const gone = error?.code === 'ROOM_NOT_FOUND';
   const seed = gone && saved && saved.code === code && saved.tracks.length > 0 ? saved : null;
