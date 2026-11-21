@@ -20,6 +20,7 @@ services:
       MAX_ROOMS: ${MAX_ROOMS:-5000}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-0}
       MAX_CONNECTIONS_PER_IP: ${MAX_CONNECTIONS_PER_IP:-20}
+      JAM_TOKEN_SECRET: ${JAM_TOKEN_SECRET:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     healthcheck:
       test:
@@ -51,6 +52,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       BREVO_API_KEY: ${BREVO_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
+      JAM_TOKEN_SECRET: ${JAM_TOKEN_SECRET:-}
     depends_on:
       - server
       - mongo

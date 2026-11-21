@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ACCOUNT_TOKEN_MAX_LENGTH } from './accountToken';
 import { LIMITS, REACTION_EMOJIS } from './constants';
 import { ROOM_CODE_REGEX } from './roomCode';
 
@@ -23,11 +24,14 @@ export const reclaimSchema = z.object({
 
 /** A random id the browser keeps in localStorage, so a removed person cannot just reload and rejoin. */
 const deviceIdSchema = z.string().min(1).max(64);
+/** Signed by the web app for a signed-in account (see `accountToken.ts`); ignored when invalid. */
+const accountTokenSchema = z.string().min(1).max(ACCOUNT_TOKEN_MAX_LENGTH);
 
 export const createRoomSchema = z.object({
   name: nicknameSchema,
   roomName: roomNameSchema.optional(),
   deviceId: deviceIdSchema.optional(),
+  accountToken: accountTokenSchema.optional(),
 });
 
 export const joinRoomSchema = z.object({
@@ -35,6 +39,7 @@ export const joinRoomSchema = z.object({
   name: nicknameSchema,
   reclaim: reclaimSchema.optional(),
   deviceId: deviceIdSchema.optional(),
+  accountToken: accountTokenSchema.optional(),
 });
 
 export const searchResultSchema = z.object({

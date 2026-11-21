@@ -13,6 +13,7 @@ import {
 } from '@jamwave/shared';
 import { io, type Socket } from 'socket.io-client';
 import { toast } from 'sonner';
+import { getAccountToken } from './accountToken';
 import { SOCKET_URL } from './env';
 import { session } from './session';
 import { useRoomStore } from './store';
@@ -167,6 +168,7 @@ export async function createRoom(name: string, roomName?: string): Promise<strin
     name,
     roomName: roomName?.trim() || undefined,
     deviceId: session.getDeviceId(),
+    accountToken: await getAccountToken(),
   });
   adopt(result.snapshot.code, result);
   return result.snapshot.code;
@@ -189,6 +191,7 @@ export async function joinRoom(
     name,
     reclaim,
     deviceId: session.getDeviceId(),
+    accountToken: await getAccountToken(),
   });
   adopt(code, result);
 }

@@ -46,3 +46,34 @@ export async function searchUsers(query: string, limit = 20): Promise<PublicUser
     .toArray();
   return docs.map(toPublicUser);
 }
+
+/**
+ * Whether friends may see which jam this account is in. Stored as `showActivity` on the user
+ * document; an absent field means visible (the default).
+ */
+export async function getShowActivity(userId: string): Promise<boolean> {
+  await ready();
+  const _id = toObjectId(userId);
+  if (!_id) return true;
+  const doc = await db.collection('user').findOne({ _id }, { projection: { showActivity: 1 } });
+  return doc?.showActivity !== false;
+}
+
+export async function setShowActivity(userId: string, show: boolean): Promise<void> {
+  await ready();
+  const _id = toObjectId(userId);
+  if (!_id) return;
+  await db.collection('user').updateOne({ _id }, { $set: { showActivity: show } });
+}
+
+/** The subset of `ids` that chose to hide their activity. */
+export async function getActivityHidden(ids: string[]): Promise<Set<string>> {
+  await ready();
+  const objectIds = ids.map(toObjectId).filter((id) => id !== null);
+  if (objectIds.length === 0) return new Set();
+  const docs = await db
+    .collection('user')
+    .find({ _id: { $in: objectIds }, showActivity: false }, { projection: { _id: 1 } })
+    .toArray();
+  return new Set(docs.map((doc) => doc._id.toString()));
+}

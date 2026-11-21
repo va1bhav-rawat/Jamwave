@@ -37,6 +37,16 @@ export interface Participant {
   canControl: boolean;
   connected: boolean;
   joinedAt: number;
+  /** Public username when the person joined signed in; lets others open their profile. */
+  username?: string;
+}
+
+/** Where a friend is right now, for the People page. */
+export interface PresenceInfo {
+  code: string;
+  roomName: string;
+  listeners: number;
+  nowPlaying: string | null;
 }
 
 export type PlaybackStatus = 'idle' | 'playing' | 'paused';

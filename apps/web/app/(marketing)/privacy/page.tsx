@@ -42,7 +42,9 @@ export default function PrivacyPage() {
             are public: anyone can open your profile and see them. A playlist stores only the
             YouTube video IDs of its songs and when you added them; titles and channel names are
             fetched from YouTube when the playlist is shown and cached for at most 30 days. Friend
-            requests you send are visible to the person you sent them to.
+            requests you send are visible to the person you sent them to. While you are in a jam
+            signed in, your friends can see which jam it is and join you; you can turn this off in
+            Settings. Your username is shown to the other people in that jam.
           </li>
           <li>
             <strong className="text-fg">Jam content.</strong> The queue, playback state, chat

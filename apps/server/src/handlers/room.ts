@@ -7,9 +7,10 @@ import {
   roomSettingsSchema,
   type JoinResult,
 } from '@jamwave/shared';
+import { verifyAccountToken } from '../lib/accountToken';
 import { AppError } from '../lib/errors';
 import type { SlidingWindowLimiter } from '../lib/rateLimit';
-import type { ParticipantRecord, Room } from '../rooms/Room';
+import type { AccountRef, ParticipantRecord, Room } from '../rooms/Room';
 import {
   clientIp,
   parse,
@@ -74,6 +75,17 @@ export function registerRoomHandlers(ctx: HandlerContext, socket: AppSocket): vo
     ctx.log.debug({ code: room.code, participant: participant.id }, 'detached stale socket');
   };
 
+  /** The signed-in account behind a token, or undefined (a guest) when there is none or it is bad. */
+  const accountFrom = (token: string | undefined): AccountRef | undefined => {
+    if (!token || !ctx.jamTokenSecret) return undefined;
+    const claims = verifyAccountToken(token, ctx.jamTokenSecret);
+    if (!claims) {
+      ctx.log.debug({ socket: socket.id }, 'ignored an invalid account token');
+      return undefined;
+    }
+    return { id: claims.sub, username: claims.username };
+  };
+
   socket.on('room:create', (payload, ack) =>
     respond(ctx, socket, ack, () => {
       const input = parse(createRoomSchema, payload);
@@ -84,6 +96,7 @@ export function registerRoomHandlers(ctx: HandlerContext, socket: AppSocket): vo
         roomName: input.roomName,
         socketId: socket.id,
         deviceId: input.deviceId,
+        account: accountFrom(input.accountToken),
       });
       return enter(room, participant);
     }),
@@ -110,6 +123,7 @@ export function registerRoomHandlers(ctx: HandlerContext, socket: AppSocket): vo
         socketId: socket.id,
         reclaim: input.reclaim,
         deviceId: input.deviceId,
+        account: accountFrom(input.accountToken),
       });
       if (reclaimed) kickStaleSocket(room, participant, previousSocketId);
       ctx.log.info(

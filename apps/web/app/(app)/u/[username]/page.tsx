@@ -2,14 +2,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PlaylistGrid } from '@/components/playlists/PlaylistCard';
+import { AutoRefresh } from '@/components/social/AutoRefresh';
 import { FriendButton } from '@/components/social/FriendButton';
+import { JamSummary } from '@/components/social/JammingNow';
 import { PersonRow } from '@/components/social/PersonRow';
 import { UserAvatar } from '@/components/social/UserAvatar';
 import { Button } from '@/components/ui/button';
 import { getServerSession } from '@/lib/auth';
 import { getRelation, listFriends } from '@/lib/data/friends';
 import { listPlaylists } from '@/lib/data/playlists';
-import { getUserByUsername } from '@/lib/data/users';
+import { getActivityHidden, getUserByUsername } from '@/lib/data/users';
+import { fetchPresence } from '@/lib/presence';
 
 type Props = { params: Promise<{ username: string }> };
 
@@ -33,9 +36,29 @@ export default async function ProfilePage({ params }: Props) {
     listFriends(user.id),
   ]);
   const isMe = relation === 'self';
+  // Only friends see where someone is, and only if that person has not hidden it.
+  const jamming =
+    relation === 'friends' && !(await getActivityHidden([user.id])).has(user.id)
+      ? (await fetchPresence([user.id]))[user.id]
+      : undefined;
 
   return (
     <>
+      {relation === 'friends' ? <AutoRefresh /> : null}
+      {jamming ? (
+        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-accent/30 bg-accent/5 p-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">@{user.username} is in a jam right now</p>
+            <JamSummary
+              presence={jamming}
+              className="flex !items-start !text-left"
+            />
+          </div>
+          <Button asChild>
+            <Link href={`/jam/${jamming.code}`}>Join</Link>
+          </Button>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-4">
         <UserAvatar username={user.username} image={user.image} size="lg" />
         <div className="min-w-0 flex-1">

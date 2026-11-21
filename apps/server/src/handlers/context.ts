@@ -76,6 +76,8 @@ export interface HandlerContext {
   provider: MusicProvider;
   limiters: Limiters;
   trustProxyHops: number;
+  /** Verifies account tokens from the web app; undefined means everyone is a guest. */
+  jamTokenSecret: string | undefined;
   log: Logger;
 }
 

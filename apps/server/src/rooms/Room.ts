@@ -25,6 +25,14 @@ export interface ParticipantRecord extends Participant {
   disconnectedAt: number | null;
   /** The browser's self-chosen id, if it sent one; what a ban is keyed on. */
   deviceId: string | null;
+  /** Account id when the person joined signed in (the public `username` comes with it). */
+  accountId: string | null;
+}
+
+/** A signed-in account, as vouched for by the web app's token. */
+export interface AccountRef {
+  id: string;
+  username: string;
 }
 
 export interface RemoveResult {
@@ -47,7 +55,7 @@ export class Room {
   playback: PlaybackState;
   readonly skipVotes = new Set<string>();
   readonly chat: ChatMessage[] = [];
-  /** Device ids the host removed; they stay out for the life of the room. */
+  /** `device:<id>` and `account:<id>` keys of people the host removed; they stay out for the life of the room. */
   readonly bans = new Set<string>();
   version = 0;
   /** Server time since which nobody has been connected; null while someone is. */
@@ -131,12 +139,26 @@ export class Room {
     return best;
   }
 
-  isBanned(deviceId: string | null | undefined): boolean {
-    return !!deviceId && this.bans.has(deviceId);
+  isBanned(deviceId: string | null | undefined, accountId?: string | null): boolean {
+    return (
+      (!!deviceId && this.bans.has(`device:${deviceId}`)) ||
+      (!!accountId && this.bans.has(`account:${accountId}`))
+    );
   }
 
-  addParticipant(name: string, socketId: string, deviceId: string | null = null): ParticipantRecord {
-    if (this.isBanned(deviceId)) {
+  /** Remember a removed person by every id we have for them. */
+  ban(participant: Pick<ParticipantRecord, 'deviceId' | 'accountId'>): void {
+    if (participant.deviceId) this.bans.add(`device:${participant.deviceId}`);
+    if (participant.accountId) this.bans.add(`account:${participant.accountId}`);
+  }
+
+  addParticipant(
+    name: string,
+    socketId: string,
+    deviceId: string | null = null,
+    account: AccountRef | null = null,
+  ): ParticipantRecord {
+    if (this.isBanned(deviceId, account?.id)) {
       throw new AppError('BANNED', 'The host removed you from this jam');
     }
     if (this.participants.size >= LIMITS.MAX_PARTICIPANTS) {
@@ -154,6 +176,8 @@ export class Room {
       socketId,
       disconnectedAt: null,
       deviceId,
+      accountId: account?.id ?? null,
+      ...(account ? { username: account.username } : {}),
     };
     this.participants.set(participant.id, participant);
     if (!this.hostId || !this.participants.has(this.hostId)) {
@@ -170,6 +194,7 @@ export class Room {
     secret: string,
     socketId: string,
     name?: string,
+    account: AccountRef | null = null,
   ): ParticipantRecord | null {
     const participant = this.participants.get(participantId);
     if (!participant || participant.secret !== secret) return null;
@@ -177,6 +202,11 @@ export class Room {
     participant.socketId = socketId;
     participant.disconnectedAt = null;
     if (name) participant.name = name;
+    // Someone who signed in and refreshed keeps their seat and becomes known by account.
+    if (account && !participant.accountId) {
+      participant.accountId = account.id;
+      participant.username = account.username;
+    }
     this.emptySince = null;
     this.bump();
     return participant;
@@ -446,7 +476,7 @@ export class Room {
   snapshot(): RoomSnapshot {
     const participants: Participant[] = [...this.participants.values()]
       .sort((a, b) => a.joinedAt - b.joinedAt)
-      .map(({ id, name, color, isHost, canControl, connected, joinedAt }) => ({
+      .map(({ id, name, color, isHost, canControl, connected, joinedAt, username }) => ({
         id,
         name,
         color,
@@ -454,6 +484,7 @@ export class Room {
         canControl: isHost || canControl,
         connected,
         joinedAt,
+        ...(username ? { username } : {}),
       }));
     return {
       code: this.code,

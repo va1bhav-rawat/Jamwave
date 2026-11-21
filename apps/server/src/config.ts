@@ -35,6 +35,7 @@ const envSchema = z.object({
   MAX_ROOMS: z.coerce.number().int().positive().default(5_000),
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
   MAX_CONNECTIONS_PER_IP: z.coerce.number().int().positive().default(20),
+  JAM_TOKEN_SECRET: optionalString,
   LOG_LEVEL: z.string().default('info'),
 });
 
@@ -58,6 +59,11 @@ export interface Config {
    */
   trustProxyHops: number;
   maxConnectionsPerIp: number;
+  /**
+   * Shared with the web app. It signs account tokens that let a signed-in person be known by
+   * account in a jam, and authenticates the web app's presence lookups. Unset: guests only.
+   */
+  jamTokenSecret: string | undefined;
   logLevel: string;
 }
 
@@ -84,6 +90,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     maxRooms: e.MAX_ROOMS,
     trustProxyHops: e.TRUST_PROXY_HOPS,
     maxConnectionsPerIp: e.MAX_CONNECTIONS_PER_IP,
+    jamTokenSecret: e.JAM_TOKEN_SECRET,
     logLevel: e.LOG_LEVEL,
   };
 }

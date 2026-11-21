@@ -7,7 +7,7 @@ import { getServerSession } from './auth';
 import * as friends from './data/friends';
 import * as playlists from './data/playlists';
 import { DataError } from './data/playlists';
-import { getUserByUsername, searchUsers } from './data/users';
+import { getUserByUsername, searchUsers, setShowActivity } from './data/users';
 import { getRelations } from './data/friends';
 import { resolveVideos, warmVideos } from './data/videos';
 import {
@@ -234,5 +234,15 @@ export async function searchPeopleAction(query: string): Promise<ActionResult<Pe
       ...user,
       relation: user.id === meId ? 'self' : (relations.get(user.id) ?? 'none'),
     }));
+  });
+}
+
+// ---------------------------------------------------------------- activity
+
+/** Let friends see (or stop seeing) which jam the signed-in person is in. */
+export async function setShowActivityAction(show: boolean): Promise<ActionResult> {
+  return run(async () => {
+    await setShowActivity(await requireUserId(), z.boolean().parse(show));
+    return null;
   });
 }

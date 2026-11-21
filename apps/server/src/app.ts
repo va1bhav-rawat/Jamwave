@@ -31,6 +31,9 @@ export interface App {
 /** Wire the HTTP server, Socket.IO, the room manager and the catalogue together. */
 export function createApp({ config, logger, provider: providerOverride }: AppOptions): App {
   const startedAt = Date.now();
+  if (!config.jamTokenSecret) {
+    logger.warn('JAM_TOKEN_SECRET is not set: jams know nobody by account and /api/presence is off');
+  }
   const provider: MusicProvider =
     providerOverride ??
     new YouTubeProvider({
@@ -66,7 +69,13 @@ export function createApp({ config, logger, provider: providerOverride }: AppOpt
   });
 
   const httpServer = createServer(
-    createRequestHandler({ manager, provider, corsOrigins: config.corsOrigins, startedAt }),
+    createRequestHandler({
+      manager,
+      provider,
+      corsOrigins: config.corsOrigins,
+      jamTokenSecret: config.jamTokenSecret,
+      startedAt,
+    }),
   );
 
   const io: AppServer = new Server(httpServer, {
@@ -113,7 +122,15 @@ export function createApp({ config, logger, provider: providerOverride }: AppOpt
 
   io.on('connection', (socket) => {
     registerSocketHandlers(
-      { io, manager, provider, limiters, trustProxyHops: config.trustProxyHops, log: logger },
+      {
+        io,
+        manager,
+        provider,
+        limiters,
+        trustProxyHops: config.trustProxyHops,
+        jamTokenSecret: config.jamTokenSecret,
+        log: logger,
+      },
       socket,
     );
   });

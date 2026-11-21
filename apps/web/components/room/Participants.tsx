@@ -1,6 +1,7 @@
 'use client';
 
 import { Crown, Headphones, MoreHorizontal, SlidersHorizontal, UserMinus } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '@/components/ui/dropdown';
 import { errorMessage, jam } from '@/lib/jamClient';
@@ -45,7 +46,20 @@ export function Participants() {
             <Avatar name={p.name} color={p.color} dim={!p.connected} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 truncate text-sm font-medium">
-                <span className="truncate">{p.name}</span>
+                {p.username ? (
+                  // Signed-in people link to their profile, where anyone can add them as a friend.
+                  <Link
+                    href={`/u/${p.username}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`@${p.username} · view profile`}
+                    className="truncate hover:underline"
+                  >
+                    {p.name}
+                  </Link>
+                ) : (
+                  <span className="truncate">{p.name}</span>
+                )}
                 {p.id === me?.id ? <span className="text-xs text-fg-subtle">(you)</span> : null}
                 {p.isHost ? (
                   <Crown className="h-3.5 w-3.5 text-amber-400" aria-label="Host" />
@@ -59,6 +73,7 @@ export function Participants() {
                     : p.canControl
                       ? 'can control'
                       : 'listener'}
+                {p.username ? ` · @${p.username}` : null}
               </div>
             </div>
             {isHost && p.id !== me?.id ? (

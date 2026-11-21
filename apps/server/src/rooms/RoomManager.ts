@@ -2,12 +2,13 @@ import {
   TIMING,
   generateRoomCode,
   type ChatMessage,
+  type PresenceInfo,
   type ReclaimPayload,
   type RoomClosedReason,
 } from '@jamwave/shared';
 import { AppError } from '../lib/errors';
 import type { Logger } from '../lib/logger';
-import { Room, type Now, type ParticipantRecord } from './Room';
+import { Room, type AccountRef, type Now, type ParticipantRecord } from './Room';
 
 export type ChangeReason =
   | 'join'
@@ -50,6 +51,7 @@ export interface JoinInput {
   socketId: string;
   reclaim?: ReclaimPayload;
   deviceId?: string;
+  account?: AccountRef;
 }
 
 export interface JoinOutput {
@@ -93,6 +95,7 @@ export class RoomManager {
     roomName?: string;
     socketId: string;
     deviceId?: string;
+    account?: AccountRef;
   }): {
     room: Room;
     participant: ParticipantRecord;
@@ -107,6 +110,7 @@ export class RoomManager {
       input.hostName,
       input.socketId,
       input.deviceId ?? null,
+      input.account ?? null,
     );
     this.rooms.set(code, room);
     this.metrics.roomsCreated++;
@@ -134,6 +138,7 @@ export class RoomManager {
         input.reclaim.secret,
         input.socketId,
         input.name,
+        input.account ?? null,
       );
       if (participant) {
         this.clearGrace(room.code, participant.id);
@@ -142,7 +147,12 @@ export class RoomManager {
         return { room, participant, reclaimed: true };
       }
     }
-    const participant = room.addParticipant(input.name, input.socketId, input.deviceId ?? null);
+    const participant = room.addParticipant(
+      input.name,
+      input.socketId,
+      input.deviceId ?? null,
+      input.account ?? null,
+    );
     this.metrics.joins++;
     this.recordConnected();
     this.system(room, `${participant.name} joined the jam`);
@@ -187,13 +197,37 @@ export class RoomManager {
     this.commit(room, 'leave');
   }
 
+  /**
+   * Which jam each of these accounts is in right now (connected members only). Computed by
+   * scanning rooms: at this scale that is cheap, and there is no index to keep in step.
+   */
+  presenceFor(accountIds: string[]): Record<string, PresenceInfo> {
+    const wanted = new Set(accountIds);
+    const found: Record<string, PresenceInfo> = {};
+    if (wanted.size === 0) return found;
+    for (const room of this.rooms.values()) {
+      for (const p of room.participants.values()) {
+        if (!p.connected || !p.accountId || !wanted.has(p.accountId) || p.accountId in found) {
+          continue;
+        }
+        found[p.accountId] = {
+          code: room.code,
+          roomName: room.settings.name,
+          listeners: room.connectedCount,
+          nowPlaying: room.playback.track?.title ?? null,
+        };
+      }
+    }
+    return found;
+  }
+
   /** Host removed someone. Returns their record so the caller can tell their socket. */
   kick(room: Room, participantId: string): ParticipantRecord | null {
     this.clearGrace(room.code, participantId);
     const { removed } = room.removeParticipant(participantId);
     if (!removed) return null;
-    // Keep them out: a fresh join from the same browser is refused for the life of the room.
-    if (removed.deviceId) room.bans.add(removed.deviceId);
+    // Keep them out: a fresh join from the same browser or account is refused for the life of the room.
+    room.ban(removed);
     this.system(room, `${removed.name} was removed by the host`);
     this.commit(room, 'leave');
     return removed;
