@@ -83,6 +83,7 @@ export function registerRoomHandlers(ctx: HandlerContext, socket: AppSocket): vo
         hostName: input.name,
         roomName: input.roomName,
         socketId: socket.id,
+        deviceId: input.deviceId,
       });
       return enter(room, participant);
     }),
@@ -108,6 +109,7 @@ export function registerRoomHandlers(ctx: HandlerContext, socket: AppSocket): vo
         name: input.name,
         socketId: socket.id,
         reclaim: input.reclaim,
+        deviceId: input.deviceId,
       });
       if (reclaimed) kickStaleSocket(room, participant, previousSocketId);
       ctx.log.info(

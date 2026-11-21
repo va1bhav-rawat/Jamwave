@@ -21,15 +21,20 @@ export const reclaimSchema = z.object({
   secret: z.string().min(1).max(128),
 });
 
+/** A random id the browser keeps in localStorage, so a removed person cannot just reload and rejoin. */
+const deviceIdSchema = z.string().min(1).max(64);
+
 export const createRoomSchema = z.object({
   name: nicknameSchema,
   roomName: roomNameSchema.optional(),
+  deviceId: deviceIdSchema.optional(),
 });
 
 export const joinRoomSchema = z.object({
   code: roomCodeSchema,
   name: nicknameSchema,
   reclaim: reclaimSchema.optional(),
+  deviceId: deviceIdSchema.optional(),
 });
 
 export const searchResultSchema = z.object({

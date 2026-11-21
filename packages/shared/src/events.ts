@@ -28,6 +28,7 @@ export type ErrorCode =
   | 'ALREADY_IN_ROOM'
   | 'NOT_IN_ROOM'
   | 'FORBIDDEN'
+  | 'BANNED'
   | 'QUEUE_FULL'
   | 'TRACK_NOT_FOUND'
   | 'PARTICIPANT_NOT_FOUND'

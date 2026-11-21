@@ -49,6 +49,7 @@ export interface JoinInput {
   name: string;
   socketId: string;
   reclaim?: ReclaimPayload;
+  deviceId?: string;
 }
 
 export interface JoinOutput {
@@ -87,7 +88,12 @@ export class RoomManager {
 
   // ---------------------------------------------------------------- lifecycle
 
-  createRoom(input: { hostName: string; roomName?: string; socketId: string }): {
+  createRoom(input: {
+    hostName: string;
+    roomName?: string;
+    socketId: string;
+    deviceId?: string;
+  }): {
     room: Room;
     participant: ParticipantRecord;
   } {
@@ -97,7 +103,11 @@ export class RoomManager {
     let code = generateRoomCode();
     while (this.rooms.has(code)) code = generateRoomCode();
     const room = new Room(code, { name: input.roomName || `${input.hostName}'s jam` }, this.now);
-    const participant = room.addParticipant(input.hostName, input.socketId);
+    const participant = room.addParticipant(
+      input.hostName,
+      input.socketId,
+      input.deviceId ?? null,
+    );
     this.rooms.set(code, room);
     this.metrics.roomsCreated++;
     this.metrics.peakRooms = Math.max(this.metrics.peakRooms, this.rooms.size);
@@ -132,7 +142,7 @@ export class RoomManager {
         return { room, participant, reclaimed: true };
       }
     }
-    const participant = room.addParticipant(input.name, input.socketId);
+    const participant = room.addParticipant(input.name, input.socketId, input.deviceId ?? null);
     this.metrics.joins++;
     this.recordConnected();
     this.system(room, `${participant.name} joined the jam`);
@@ -182,6 +192,8 @@ export class RoomManager {
     this.clearGrace(room.code, participantId);
     const { removed } = room.removeParticipant(participantId);
     if (!removed) return null;
+    // Keep them out: a fresh join from the same browser is refused for the life of the room.
+    if (removed.deviceId) room.bans.add(removed.deviceId);
     this.system(room, `${removed.name} was removed by the host`);
     this.commit(room, 'leave');
     return removed;

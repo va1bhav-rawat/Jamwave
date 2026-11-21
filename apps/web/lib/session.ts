@@ -11,6 +11,7 @@ const VOLUME_KEY = 'jamwave:volume';
 const VIDEO_SIZE_KEY = 'jamwave:videoSize';
 const RECENT_JAMS_KEY = 'jamwave:recentJams';
 const LAST_QUEUE_KEY = 'jamwave:lastQueue';
+const DEVICE_KEY = 'jamwave:deviceId';
 const identityKey = (code: string) => `jamwave:identity:${code}`;
 
 /** How many recent jams to offer on the landing page, and for how long. */
@@ -120,7 +121,26 @@ const readLastQueue = jsonReader<SavedQueue>(local, LAST_QUEUE_KEY, (raw) => {
 let prunedSource: RecentJam[] | null = null;
 let pruned: RecentJam[] = [];
 
+/** Kept for the tab when storage is blocked, so at least one page load has a stable id. */
+let deviceIdFallback: string | null = null;
+
+function newDeviceId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 export const session = {
+  /**
+   * A random id this browser made up for itself and keeps. Sent when creating or joining a jam,
+   * so that someone the host removed cannot rejoin just by reloading. Clearing site data resets it.
+   */
+  getDeviceId(): string {
+    const stored = read(local, DEVICE_KEY);
+    if (stored) return stored;
+    deviceIdFallback ??= newDeviceId();
+    write(local, DEVICE_KEY, deviceIdFallback);
+    return deviceIdFallback;
+  },
   getNickname(): string | null {
     const value = read(local, NICKNAME_KEY);
     return value && value.trim() ? value : null;

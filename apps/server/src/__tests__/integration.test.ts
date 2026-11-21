@@ -218,7 +218,11 @@ describe('jamwave server end to end', () => {
     const created = await request<JoinResult>(host, 'room:create', { name: 'Host' });
     const code = created.snapshot.code;
     const guest = client();
-    const joined = await request<JoinResult>(guest, 'room:join', { code, name: 'Guest' });
+    const joined = await request<JoinResult>(guest, 'room:join', {
+      code,
+      name: 'Guest',
+      deviceId: 'guest-phone',
+    });
     const guestId = joined.self.participantId;
 
     // A listener can still add songs, but not jump the queue or control playback.
@@ -263,11 +267,20 @@ describe('jamwave server end to end', () => {
     expect(await told).toEqual({ reason: 'removed' });
     expect((await gone).participants[0]?.name).toBe('Host');
     await expect(request(guest, 'chat:send', { text: 'hi' })).rejects.toThrow(/NOT_IN_ROOM/);
-    // Their old seat cannot be reclaimed; joining again is a fresh seat.
+    // Their seat is gone, and the same browser (device id) stays out for the life of the room.
+    await expect(
+      request(guest, 'room:join', {
+        code,
+        name: 'Guest',
+        reclaim: joined.self,
+        deviceId: 'guest-phone',
+      }),
+    ).rejects.toThrow(/BANNED/);
+    // Another browser is a fresh seat: the ban is a nuisance filter, not a security boundary.
     const back = await request<JoinResult>(guest, 'room:join', {
       code,
       name: 'Guest',
-      reclaim: joined.self,
+      deviceId: 'guest-laptop',
     });
     expect(back.self.participantId).not.toBe(guestId);
   });

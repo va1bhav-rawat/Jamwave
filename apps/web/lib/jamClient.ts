@@ -166,6 +166,7 @@ export async function createRoom(name: string, roomName?: string): Promise<strin
   const result = await request<JoinResult>('room:create', {
     name,
     roomName: roomName?.trim() || undefined,
+    deviceId: session.getDeviceId(),
   });
   adopt(result.snapshot.code, result);
   return result.snapshot.code;
@@ -183,7 +184,12 @@ export async function joinRoom(
   await ensureConnected();
   if (!opts.silent) store.setStatus('joining');
   const reclaim = session.getIdentity(code) ?? undefined;
-  const result = await request<JoinResult>('room:join', { code, name, reclaim });
+  const result = await request<JoinResult>('room:join', {
+    code,
+    name,
+    reclaim,
+    deviceId: session.getDeviceId(),
+  });
   adopt(code, result);
 }
 

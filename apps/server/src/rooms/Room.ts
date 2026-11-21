@@ -23,6 +23,8 @@ export interface ParticipantRecord extends Participant {
   secret: string;
   socketId: string | null;
   disconnectedAt: number | null;
+  /** The browser's self-chosen id, if it sent one; what a ban is keyed on. */
+  deviceId: string | null;
 }
 
 export interface RemoveResult {
@@ -45,6 +47,8 @@ export class Room {
   playback: PlaybackState;
   readonly skipVotes = new Set<string>();
   readonly chat: ChatMessage[] = [];
+  /** Device ids the host removed; they stay out for the life of the room. */
+  readonly bans = new Set<string>();
   version = 0;
   /** Server time since which nobody has been connected; null while someone is. */
   emptySince: number | null;
@@ -127,7 +131,14 @@ export class Room {
     return best;
   }
 
-  addParticipant(name: string, socketId: string): ParticipantRecord {
+  isBanned(deviceId: string | null | undefined): boolean {
+    return !!deviceId && this.bans.has(deviceId);
+  }
+
+  addParticipant(name: string, socketId: string, deviceId: string | null = null): ParticipantRecord {
+    if (this.isBanned(deviceId)) {
+      throw new AppError('BANNED', 'The host removed you from this jam');
+    }
     if (this.participants.size >= LIMITS.MAX_PARTICIPANTS) {
       throw new AppError('ROOM_FULL', `This jam is full (${LIMITS.MAX_PARTICIPANTS} people max)`);
     }
@@ -142,6 +153,7 @@ export class Room {
       secret: newSecret(),
       socketId,
       disconnectedAt: null,
+      deviceId,
     };
     this.participants.set(participant.id, participant);
     if (!this.hostId || !this.participants.has(this.hostId)) {

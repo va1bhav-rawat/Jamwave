@@ -33,6 +33,7 @@ export function JoinGate({
   const name = typed ?? (accountName || stored);
   const busy = status === 'connecting' || status === 'joining';
   const gone = error?.code === 'ROOM_NOT_FOUND';
+  const banned = error?.code === 'BANNED';
   const seed = gone && saved && saved.code === code && saved.tracks.length > 0 ? saved : null;
 
   // An ended jam has no business in "Jump back in".
@@ -84,6 +85,24 @@ export function JoinGate({
                   </Button>
                 </StartJamDialog>
               )}
+              <Button asChild variant="secondary" size="lg" className="flex-1">
+                <Link href="/join">Join another</Link>
+              </Button>
+            </div>
+          </>
+        ) : banned ? (
+          <>
+            <h1 className="text-2xl font-semibold">The host removed you from this jam</h1>
+            <p className="mt-2 text-fg-muted">
+              Jam <span className="font-mono text-fg">{code}</span> is still going, but you cannot
+              rejoin it. You can start your own, or join a different one.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <StartJamDialog>
+                <Button size="lg" className="flex-1">
+                  Start a new jam
+                </Button>
+              </StartJamDialog>
               <Button asChild variant="secondary" size="lg" className="flex-1">
                 <Link href="/join">Join another</Link>
               </Button>
