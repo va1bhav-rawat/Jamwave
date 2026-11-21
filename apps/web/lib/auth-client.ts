@@ -34,6 +34,10 @@ const MESSAGES: Record<string, string> = {
   INVALID_TOKEN: 'This link has expired or was already used. Request a new one.',
   USER_NOT_FOUND: 'This link has expired or was already used. Request a new one.',
   RESET_PASSWORD_DISABLED: `Password reset isn't set up yet. Email ${CONTACT_EMAIL} and we'll sort it out.`,
+  // Account deletion
+  INVALID_PASSWORD: 'Wrong password',
+  SESSION_EXPIRED: 'For safety, sign out, sign in again and then try once more.',
+  CREDENTIAL_ACCOUNT_NOT_FOUND: 'This account has no password. Sign out, sign in again and then try once more.',
 };
 
 /** A message fit for showing to the person, from an auth client error. */

@@ -3,6 +3,7 @@ import { mongodbAdapter } from 'better-auth/adapters/mongodb';
 import { nextCookies } from 'better-auth/next-js';
 import { username } from 'better-auth/plugins/username';
 import { headers } from 'next/headers';
+import { deleteUserData } from './data/account';
 import { connectDb, db } from './db';
 import { emailEnabled, passwordResetEmail, sendEmail } from './email';
 import { APP_URL } from './env';
@@ -85,6 +86,16 @@ export const auth = betterAuth({
     // Emails are not verified yet, so a Google sign-in must not be merged into a password
     // account that merely claims the same address.
     accountLinking: { enabled: false },
+  },
+  user: {
+    deleteUser: {
+      enabled: true,
+      // Before, not after: if this throws the account survives and the person can try again,
+      // instead of ending up with playlists that belong to an id that no longer exists.
+      beforeDelete: async (user) => {
+        await deleteUserData(user.id);
+      },
+    },
   },
   databaseHooks: {
     user: {

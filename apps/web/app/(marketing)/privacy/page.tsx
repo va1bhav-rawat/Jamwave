@@ -120,6 +120,10 @@ export default function PrivacyPage() {
             saved queue is removed automatically after 30 days.
           </li>
           <li>
+            If you have an account, you can delete it yourself at any time from Settings → Delete
+            account. Your account, your playlists and your friendships are removed immediately.
+          </li>
+          <li>
             You can also ask us to delete anything related to you by writing to the contact address
             below; we will reply within 7 days.
           </li>

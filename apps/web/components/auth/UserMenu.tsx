@@ -1,6 +1,6 @@
 'use client';
 
-import { ListMusic, LogOut, User, Users } from 'lucide-react';
+import { ListMusic, LogOut, Settings, User, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -66,6 +66,11 @@ export function UserMenu() {
         <DropdownItem asChild>
           <Link href={`/u/${handle}`}>
             <User className="h-4 w-4" /> My profile
+          </Link>
+        </DropdownItem>
+        <DropdownItem asChild>
+          <Link href="/settings">
+            <Settings className="h-4 w-4" /> Settings
           </Link>
         </DropdownItem>
         <div className="my-1 h-px bg-border" />
