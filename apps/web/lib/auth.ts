@@ -4,6 +4,7 @@ import { nextCookies } from 'better-auth/next-js';
 import { username } from 'better-auth/plugins/username';
 import { headers } from 'next/headers';
 import { connectDb, db } from './db';
+import { emailEnabled, passwordResetEmail, sendEmail } from './email';
 import { APP_URL } from './env';
 import {
   USERNAME_MAX,
@@ -20,6 +21,24 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET?.trim();
 export const googleEnabled = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 
 const SUFFIX_ATTEMPTS = 8;
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+/**
+ * Reset links go out by email when Brevo is configured. In development without it the link is
+ * printed to the terminal instead. In production without it the option stays undefined, so
+ * better-auth answers RESET_PASSWORD_DISABLED and the form points people at the contact address.
+ */
+const sendResetPassword =
+  emailEnabled || !isProduction
+    ? async ({ user, url }: { user: { email: string }; url: string }) => {
+        if (!emailEnabled) {
+          console.log(`[auth] Password reset link for ${user.email}: ${url}`);
+          return;
+        }
+        await sendEmail(passwordResetEmail(user.email, url));
+      }
+    : undefined;
 
 /**
  * A free username derived from the email: the part before the @, or that plus a few digits
@@ -48,6 +67,10 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 8,
     maxPasswordLength: 128,
+    sendResetPassword,
+    resetPasswordTokenExpiresIn: 60 * 60,
+    // A reset usually means the old password may be known to someone else.
+    revokeSessionsOnPasswordReset: true,
   },
   socialProviders: googleEnabled
     ? {

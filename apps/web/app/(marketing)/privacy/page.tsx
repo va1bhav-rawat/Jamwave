@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-
-/** Public contact for privacy questions and deletion requests (required by YouTube API policies). */
-const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? 'vaibhavr325@gmail.com';
+import { CONTACT_EMAIL } from '@/lib/env';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
@@ -35,7 +33,8 @@ export default function PrivacyPage() {
             store your username, your email address and a hashed password in our database. If you
             sign in with Google instead, we receive your name, email address and profile picture
             from Google and store those; we never see your Google password. A cookie keeps you
-            signed in. Your username is visible to other people; your email address is not.
+            signed in. Your username is visible to other people; your email address is not. We
+            email you only when you ask for a password reset.
           </li>
           <li>
             <strong className="text-fg">Playlists and friends (accounts only).</strong> Playlists
