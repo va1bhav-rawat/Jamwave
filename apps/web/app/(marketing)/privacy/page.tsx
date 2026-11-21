@@ -12,7 +12,7 @@ export default function PrivacyPage() {
   return (
     <article className="prose-invert mx-auto max-w-3xl px-4 py-16 sm:px-6">
       <h1 className="text-4xl font-bold tracking-tight">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-fg-subtle">Last updated: 16 November 2026</p>
+      <p className="mt-2 text-sm text-fg-subtle">Last updated: 21 November 2026</p>
 
       <section className="mt-10 space-y-4 text-fg-muted">
         <h2 className="text-xl font-semibold text-fg">The short version</h2>
@@ -40,8 +40,10 @@ export default function PrivacyPage() {
           <li>
             <strong className="text-fg">Playlists and friends (accounts only).</strong> Playlists
             you create, and the list of people you are friends with, are stored in our database and
-            are public: anyone can open your profile and see them. Friend requests you send are
-            visible to the person you sent them to.
+            are public: anyone can open your profile and see them. A playlist stores only the
+            YouTube video IDs of its songs and when you added them; titles and channel names are
+            fetched from YouTube when the playlist is shown and cached for at most 30 days. Friend
+            requests you send are visible to the person you sent them to.
           </li>
           <li>
             <strong className="text-fg">Jam content.</strong> The queue, playback state, chat
@@ -98,8 +100,9 @@ export default function PrivacyPage() {
           names, thumbnails and durations. Search queries are sent to YouTube to find videos.
           Results are shown to you and, when you add a song, to the other people in your jam. Our
           server keeps search results in memory for at most 24 hours to avoid repeating the same
-          request, and the last queue you listened to is kept in your browser for at most 30 days.
-          We do not share this information with anyone else.
+          request, the titles of songs in playlists are cached in our database for at most 30 days,
+          and the last queue you listened to is kept in your browser for at most 30 days. We do not
+          share this information with anyone else.
         </p>
       </section>
 

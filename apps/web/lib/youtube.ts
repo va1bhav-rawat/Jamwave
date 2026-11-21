@@ -1,4 +1,4 @@
-import type { SearchResult } from '@jamwave/shared';
+import { youtubeThumbnail, type SearchResult } from '@jamwave/shared';
 
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 
@@ -42,7 +42,7 @@ export async function lookUpYouTubeVideo(videoId: string): Promise<SearchResult 
     providerId: videoId,
     title: typeof data.title === 'string' ? data.title.slice(0, 300) : 'YouTube video',
     artist: typeof data.author_name === 'string' ? data.author_name.slice(0, 200) : '',
-    thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+    thumbnailUrl: youtubeThumbnail(videoId),
     durationMs: 0,
   };
 }

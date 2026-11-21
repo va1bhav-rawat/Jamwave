@@ -1,4 +1,4 @@
-import { LIMITS, type SearchResponse, type SearchResult } from '@jamwave/shared';
+import { LIMITS, youtubeThumbnail, type SearchResponse, type SearchResult } from '@jamwave/shared';
 import { AppError } from '../lib/errors';
 import type { Logger } from '../lib/logger';
 import { LruCache } from '../lib/lru';
@@ -361,7 +361,7 @@ export class YouTubeProvider implements MusicProvider {
       providerId: videoId,
       title: body.title ?? 'Untitled',
       artist: cleanArtist(body.author_name),
-      thumbnailUrl: body.thumbnail_url ?? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+      thumbnailUrl: body.thumbnail_url ?? youtubeThumbnail(videoId),
       durationMs: 0,
     };
     this.videoCache.set(videoId, result);
