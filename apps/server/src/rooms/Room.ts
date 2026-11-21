@@ -59,6 +59,7 @@ export class Room {
     this.settings = {
       name: settings.name?.trim() || 'Jam session',
       everyoneControls: settings.everyoneControls ?? true,
+      anyoneCanAdd: settings.anyoneCanAdd ?? true,
       voteSkipEnabled: settings.voteSkipEnabled ?? true,
     };
     this.playback = { status: 'idle', track: null, positionMs: 0, updatedAt: this.createdAt };
@@ -88,6 +89,11 @@ export class Room {
   canControl(participantId: string): boolean {
     if (this.isHost(participantId)) return true;
     return this.participants.get(participantId)?.canControl ?? false;
+  }
+
+  /** Adding songs is open to every member unless the host locked the queue to controllers. */
+  canAdd(participantId: string): boolean {
+    return this.settings.anyoneCanAdd || this.canControl(participantId);
   }
 
   /** Host decision for one person. The host's own permission cannot be taken away. */
@@ -223,6 +229,7 @@ export class Room {
       // The switch is a "set everyone" action; individual choices can be made again afterwards.
       for (const p of this.participants.values()) p.canControl = patch.everyoneControls;
     }
+    if (patch.anyoneCanAdd !== undefined) this.settings.anyoneCanAdd = patch.anyoneCanAdd;
     if (patch.voteSkipEnabled !== undefined) this.settings.voteSkipEnabled = patch.voteSkipEnabled;
     this.bump();
   }

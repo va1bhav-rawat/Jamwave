@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from '@/components/ui/dialog';
@@ -12,6 +13,7 @@ import { authClient, authErrorMessage } from '@/lib/auth-client';
  * no password, so better-auth requires a fresh session instead (signed in within the last day).
  */
 export function DeleteAccountForm({ hasPassword }: { hasPassword: boolean }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -41,8 +43,15 @@ export function DeleteAccountForm({ hasPassword }: { hasPassword: boolean }) {
           Your playlists and friendships are gone with it. You can still jam without an account any
           time.
         </p>
-        {/* A full navigation so the header renders signed out. */}
-        <Button variant="secondary" className="mt-4" onClick={() => window.location.assign('/')}>
+        {/* The session cookie is already gone; refresh so server components render signed out. */}
+        <Button
+          variant="secondary"
+          className="mt-4"
+          onClick={() => {
+            router.push('/');
+            router.refresh();
+          }}
+        >
           Back home
         </Button>
       </section>

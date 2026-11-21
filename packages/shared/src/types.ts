@@ -60,6 +60,11 @@ export interface RoomSettings {
    * room; after that the host can still allow or restrict individual people.
    */
   everyoneControls: boolean;
+  /**
+   * Whether every member may add songs to the queue (the default, like Spotify Jam). When off,
+   * adding needs control like play / pause / skip do. "Play next" always needs control.
+   */
+  anyoneCanAdd: boolean;
   voteSkipEnabled: boolean;
 }
 

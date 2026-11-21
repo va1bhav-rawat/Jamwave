@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { errorMessage, jam } from '@/lib/jamClient';
-import { selectCanControl, useRoomStore } from '@/lib/store';
+import { selectCanAdd, selectCanControl, useRoomStore } from '@/lib/store';
 import { formatDuration, looksLikeUrl } from '@/lib/utils';
 import { Thumb } from './Thumb';
 
@@ -28,6 +28,7 @@ const QUICK_PICKS = [
 
 export function AddTrack() {
   const canControl = useRoomStore(selectCanControl);
+  const canAdd = useRoomStore(selectCanAdd);
   const roomIsSilent = useRoomStore(
     (s) => !s.snapshot?.playback.track && (s.snapshot?.queue.length ?? 0) === 0,
   );
@@ -112,15 +113,15 @@ export function AddTrack() {
       </form>
       <div className="mt-2 flex">
         <PlaylistPicker>
-          <Button variant="ghost" size="sm" disabled={!canControl}>
+          <Button variant="ghost" size="sm" disabled={!canAdd}>
             <ListMusic className="h-4 w-4" /> My playlists
           </Button>
         </PlaylistPicker>
       </div>
       {notice ? <p className="mt-2 px-1 text-sm text-fg-muted">{notice}</p> : null}
-      {!canControl ? (
+      {!canAdd ? (
         <p className="mt-2 px-1 text-sm text-fg-muted">
-          You are listening. The host decides who can add songs and control the music.
+          The host has locked the queue. Only people with control can add songs.
         </p>
       ) : null}
 
@@ -152,7 +153,7 @@ export function AddTrack() {
             </span>
             <div className="flex gap-1">
               {results.length > 1 ? (
-                <Button variant="ghost" size="sm" onClick={addAll} disabled={!canControl}>
+                <Button variant="ghost" size="sm" onClick={addAll} disabled={!canAdd}>
                   <ListPlus className="h-4 w-4" /> Add all
                 </Button>
               ) : null}
@@ -201,7 +202,7 @@ export function AddTrack() {
                     size="icon"
                     aria-label={done ? 'Added' : 'Add to queue'}
                     onClick={() => add(item)}
-                    disabled={!canControl}
+                    disabled={!canAdd}
                   >
                     {done ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                   </Button>

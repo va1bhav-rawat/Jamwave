@@ -87,6 +87,7 @@ export const reactionSendSchema = z.object({ emoji: z.enum(REACTION_EMOJIS) });
 export const roomSettingsSchema = z.object({
   name: roomNameSchema.optional(),
   everyoneControls: z.boolean().optional(),
+  anyoneCanAdd: z.boolean().optional(),
   voteSkipEnabled: z.boolean().optional(),
 });
 

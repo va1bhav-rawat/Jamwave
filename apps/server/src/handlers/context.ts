@@ -116,6 +116,15 @@ export function requireControl({ room, participant }: Membership): void {
   }
 }
 
+export function requireAdd({ room, participant }: Membership): void {
+  if (!room.canAdd(participant.id)) {
+    throw new AppError(
+      'FORBIDDEN',
+      'The host has locked the queue: only people with control can add songs',
+    );
+  }
+}
+
 export function requireHost({ room, participant }: Membership): void {
   if (!room.isHost(participant.id)) throw new AppError('FORBIDDEN', 'Only the host can do that');
 }

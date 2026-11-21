@@ -219,3 +219,9 @@ export function selectCanControl(state: RoomStore): boolean {
   if (!me) return false;
   return me.isHost || me.canControl;
 }
+
+/** Adding songs is open to everyone unless the host locked the queue to people with control. */
+export function selectCanAdd(state: RoomStore): boolean {
+  if (!selectMe(state)) return false;
+  return (state.snapshot?.settings.anyoneCanAdd ?? true) || selectCanControl(state);
+}

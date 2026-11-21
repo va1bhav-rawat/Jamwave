@@ -17,6 +17,7 @@ export function Stage() {
   const needsGesture = useRoomStore((s) => s.sync.needsGesture);
   const volume = useRoomStore((s) => s.volume);
   const videoSize = useRoomStore((s) => s.videoSize);
+  const anyoneCanAdd = useRoomStore((s) => s.snapshot?.settings.anyoneCanAdd ?? true);
   const addedBy = useRoomStore((s) => {
     const id = s.snapshot?.playback.track?.addedBy.id;
     return s.snapshot?.participants.find((p) => p.id === id) ?? null;
@@ -125,10 +126,12 @@ export function Stage() {
                   </span>
                 ) : null}
               </>
-            ) : (
+            ) : anyoneCanAdd ? (
               'Everyone in the jam can add songs'
             )}
           </div>
+            ) : (
+              'The host picks the songs in this jam'
         </div>
       </div>
     </section>

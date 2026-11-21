@@ -2,6 +2,7 @@ import { queueAddSchema, queueRemoveSchema, queueReorderSchema } from '@jamwave/
 import { AppError } from '../lib/errors';
 import {
   parse,
+  requireAdd,
   requireControl,
   requireMembership,
   respond,
@@ -14,8 +15,9 @@ export function registerQueueHandlers(ctx: HandlerContext, socket: AppSocket): v
     respond(ctx, socket, ack, () => {
       const membership = requireMembership(ctx, socket);
       const input = parse(queueAddSchema, payload);
-      // Adding songs is part of controlling the jam; the host decides who may.
-      requireControl(membership);
+      // Anyone may add unless the host locked the queue; jumping the queue is always control.
+      requireAdd(membership);
+      if (input.playNext) requireControl(membership);
       const { room, participant } = membership;
       const { added } = room.addTracks(
         input.items,

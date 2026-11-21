@@ -221,12 +221,20 @@ describe('jamwave server end to end', () => {
     const joined = await request<JoinResult>(guest, 'room:join', { code, name: 'Guest' });
     const guestId = joined.self.participantId;
 
-    // Restricted: a listener can neither add songs nor control playback.
+    // A listener can still add songs, but not jump the queue or control playback.
     await request(host, 'room:settings', { everyoneControls: false });
+    await expect(request(guest, 'queue:add', { items: [result('z')] })).resolves.toEqual({
+      added: 1,
+    });
+    await expect(
+      request(guest, 'queue:add', { items: [result('y')], playNext: true }),
+    ).rejects.toThrow(/FORBIDDEN/);
+    await expect(request(guest, 'playback:pause')).rejects.toThrow(/FORBIDDEN/);
+    // Locked queue: adding needs control too.
+    await request(host, 'room:settings', { anyoneCanAdd: false });
     await expect(request(guest, 'queue:add', { items: [result('a')] })).rejects.toThrow(
       /FORBIDDEN/,
     );
-    await expect(request(guest, 'playback:pause')).rejects.toThrow(/FORBIDDEN/);
 
     // Only the host hands out control, and only the host removes people.
     await expect(

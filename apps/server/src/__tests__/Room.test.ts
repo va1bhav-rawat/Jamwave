@@ -82,6 +82,23 @@ describe('Room participants', () => {
     expect(room.canControl(host.id)).toBe(true);
   });
 
+  it('lets anyone add songs unless the host locks the queue', () => {
+    const { room } = makeRoom();
+    const host = room.addParticipant('Host', 's1');
+    const guest = room.addParticipant('Guest', 's2');
+    // A listener may still add songs by default.
+    room.updateSettings({ everyoneControls: false });
+    expect(room.canControl(guest.id)).toBe(false);
+    expect(room.canAdd(guest.id)).toBe(true);
+    // Locked: adding follows control.
+    room.updateSettings({ anyoneCanAdd: false });
+    expect(room.canAdd(guest.id)).toBe(false);
+    expect(room.canAdd(host.id)).toBe(true);
+    room.setParticipantControl(guest.id, true);
+    expect(room.canAdd(guest.id)).toBe(true);
+    expect(room.snapshot().settings.anyoneCanAdd).toBe(false);
+  });
+
   it('lets the host allow or restrict individual people', () => {
     const { room } = makeRoom();
     const host = room.addParticipant('Host', 's1');
