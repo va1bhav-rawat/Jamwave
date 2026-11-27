@@ -1,13 +1,15 @@
 'use server';
 
 import { searchResultSchema, type SearchResult } from '@jamwave/shared';
+import { after } from 'next/server';
 import { z } from 'zod';
 import { getServerSession } from './auth';
 import * as friends from './data/friends';
 import * as playlists from './data/playlists';
 import { DataError } from './data/playlists';
-import { getUserByUsername, searchUsers } from './data/users';
+import { getUserByUsername, searchUsers, setShowActivity } from './data/users';
 import { getRelations } from './data/friends';
+import { resolveVideos, warmVideos } from './data/videos';
 import {
   PEOPLE_SEARCH_MIN,
   PLAYLIST_LIMITS,
@@ -16,7 +18,7 @@ import {
   type PublicUser,
   type Relation,
 } from './social';
-import { lookUpYouTubeVideo, parseYouTubeVideoId } from './youtube';
+import { parseYouTubeVideoId } from './youtube';
 
 /**
  * Server actions for playlists and friends. Each one checks the session itself (an action is a
@@ -29,6 +31,16 @@ const descriptionSchema = z.string().trim().max(PLAYLIST_LIMITS.DESCRIPTION_MAX)
 const idSchema = z.string().regex(/^[0-9a-f]{24}$/i, 'Playlist not found');
 const tracksSchema = z.array(searchResultSchema).min(1).max(PLAYLIST_LIMITS.ADD_BATCH);
 const usernameSchema = z.string().trim().min(1).max(40);
+
+/**
+ * Only the video ids of what the browser sent are stored. Titles come from our own lookups, which
+ * run after the response so saving stays quick and nobody can plant a title in the shared cache.
+ */
+function videoIdsOf(tracks: SearchResult[]): string[] {
+  const ids = tracks.map((track) => track.providerId);
+  if (ids.length > 0) after(() => warmVideos(ids));
+  return ids;
+}
 
 class NotSignedIn extends Error {}
 
@@ -64,7 +76,7 @@ export async function createPlaylistAction(input: {
     const name = nameSchema.parse(input.name);
     const description = descriptionSchema.parse(input.description ?? '');
     const tracks = input.tracks?.length ? tracksSchema.parse(input.tracks) : [];
-    return { id: await playlists.createPlaylist(userId, name, description, tracks) };
+    return { id: await playlists.createPlaylist(userId, name, description, videoIdsOf(tracks)) };
   });
 }
 
@@ -98,7 +110,11 @@ export async function addTracksToPlaylistAction(
 ): Promise<ActionResult<{ added: number }>> {
   return run(async () => {
     const userId = await requireUserId();
-    const added = await playlists.addTracks(idSchema.parse(id), userId, tracksSchema.parse(tracks));
+    const added = await playlists.addTracks(
+      idSchema.parse(id),
+      userId,
+      videoIdsOf(tracksSchema.parse(tracks)),
+    );
     return { added };
   });
 }
@@ -112,9 +128,10 @@ export async function addLinkToPlaylistAction(
     const userId = await requireUserId();
     const videoId = parseYouTubeVideoId(z.string().max(500).parse(link));
     if (!videoId) throw new DataError('Paste a link to a YouTube video');
-    const track = await lookUpYouTubeVideo(videoId);
+    // Looking it up both checks the video exists and fills the title cache.
+    const track = (await resolveVideos([videoId])).get(videoId);
     if (!track) throw new DataError('That video could not be found, or it cannot be embedded');
-    const added = await playlists.addTracks(idSchema.parse(id), userId, [track]);
+    const added = await playlists.addTracks(idSchema.parse(id), userId, [videoId]);
     return { added, title: track.title };
   });
 }
@@ -138,13 +155,13 @@ export async function removeTrackFromPlaylistAction(
 export async function copyPlaylistAction(id: string): Promise<ActionResult<{ id: string }>> {
   return run(async () => {
     const userId = await requireUserId();
-    const source = await playlists.getPlaylist(idSchema.parse(id));
+    const source = await playlists.getPlaylistVideoIds(idSchema.parse(id));
     if (!source) throw new DataError('Playlist not found');
     const copyId = await playlists.createPlaylist(
       userId,
       source.name,
       source.description,
-      source.tracks,
+      source.videoIds,
     );
     return { id: copyId };
   });
@@ -217,5 +234,15 @@ export async function searchPeopleAction(query: string): Promise<ActionResult<Pe
       ...user,
       relation: user.id === meId ? 'self' : (relations.get(user.id) ?? 'none'),
     }));
+  });
+}
+
+// ---------------------------------------------------------------- activity
+
+/** Let friends see (or stop seeing) which jam the signed-in person is in. */
+export async function setShowActivityAction(show: boolean): Promise<ActionResult> {
+  return run(async () => {
+    await setShowActivity(await requireUserId(), z.boolean().parse(show));
+    return null;
   });
 }

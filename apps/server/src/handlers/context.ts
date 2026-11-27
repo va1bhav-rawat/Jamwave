@@ -76,6 +76,8 @@ export interface HandlerContext {
   provider: MusicProvider;
   limiters: Limiters;
   trustProxyHops: number;
+  /** Verifies account tokens from the web app; undefined means everyone is a guest. */
+  jamTokenSecret: string | undefined;
   log: Logger;
 }
 
@@ -113,6 +115,15 @@ export function requireMembership(ctx: HandlerContext, socket: AppSocket): Membe
 export function requireControl({ room, participant }: Membership): void {
   if (!room.canControl(participant.id)) {
     throw new AppError('FORBIDDEN', 'The host has not given you control of this jam');
+  }
+}
+
+export function requireAdd({ room, participant }: Membership): void {
+  if (!room.canAdd(participant.id)) {
+    throw new AppError(
+      'FORBIDDEN',
+      'The host has locked the queue: only people with control can add songs',
+    );
   }
 }
 

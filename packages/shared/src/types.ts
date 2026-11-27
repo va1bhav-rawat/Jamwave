@@ -37,6 +37,16 @@ export interface Participant {
   canControl: boolean;
   connected: boolean;
   joinedAt: number;
+  /** Public username when the person joined signed in; lets others open their profile. */
+  username?: string;
+}
+
+/** Where a friend is right now, for the People page. */
+export interface PresenceInfo {
+  code: string;
+  roomName: string;
+  listeners: number;
+  nowPlaying: string | null;
 }
 
 export type PlaybackStatus = 'idle' | 'playing' | 'paused';
@@ -60,6 +70,11 @@ export interface RoomSettings {
    * room; after that the host can still allow or restrict individual people.
    */
   everyoneControls: boolean;
+  /**
+   * Whether every member may add songs to the queue (the default, like Spotify Jam). When off,
+   * adding needs control like play / pause / skip do. "Play next" always needs control.
+   */
+  anyoneCanAdd: boolean;
   voteSkipEnabled: boolean;
 }
 

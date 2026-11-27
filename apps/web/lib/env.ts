@@ -6,3 +6,6 @@ export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000
 
 /** URL the Next.js server uses to reach the realtime server (may be an internal address). */
 export const SERVER_INTERNAL_URL = process.env.SOCKET_INTERNAL_URL ?? SOCKET_URL;
+
+/** Public contact for privacy questions, deletion requests and account help. */
+export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? 'vaibhavr325@gmail.com';

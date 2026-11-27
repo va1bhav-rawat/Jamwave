@@ -2,6 +2,7 @@
 
 import { usernameClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
+import { CONTACT_EMAIL } from './env';
 
 /** Browser-side auth client; talks to /api/auth on this origin. */
 export const authClient = createAuthClient({
@@ -29,6 +30,14 @@ const MESSAGES: Record<string, string> = {
   PASSWORD_TOO_LONG: 'That password is too long',
   INVALID_EMAIL_OR_PASSWORD: 'Wrong email or password',
   INVALID_USERNAME_OR_PASSWORD: 'Wrong username or password',
+  // Password reset
+  INVALID_TOKEN: 'This link has expired or was already used. Request a new one.',
+  USER_NOT_FOUND: 'This link has expired or was already used. Request a new one.',
+  RESET_PASSWORD_DISABLED: `Password reset isn't set up yet. Email ${CONTACT_EMAIL} and we'll sort it out.`,
+  // Account deletion
+  INVALID_PASSWORD: 'Wrong password',
+  SESSION_EXPIRED: 'For safety, sign out, sign in again and then try once more.',
+  CREDENTIAL_ACCOUNT_NOT_FOUND: 'This account has no password. Sign out, sign in again and then try once more.',
 };
 
 /** A message fit for showing to the person, from an auth client error. */

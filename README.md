@@ -78,6 +78,7 @@ All variables live in one root `.env` (see `.env.example`).
 | `MAX_ROOMS`                                 | server  | `5000`                              | Hard cap on live rooms; creation answers `SERVER_BUSY` beyond it                                                      |
 | `TRUST_PROXY_HOPS`                          | server  | `1`                                 | Proxies in front of the server; the client IP is read that far from the end of `x-forwarded-for` (0 = socket address) |
 | `MAX_CONNECTIONS_PER_IP`                    | server  | `20`                                | Sockets allowed per client address                                                                                    |
+| `JAM_TOKEN_SECRET`            | both    | —                          | Same value on web and server. Signs account tokens (signed-in people are known by account in jams) and guards the web app's presence lookups. Unset: guests only |
 | `LOG_LEVEL`                                 | server  | `info`                              | pino level                                                                                                            |
 | `NEXT_PUBLIC_SOCKET_URL`                    | web     | `http://localhost:4000`             | Public URL of the realtime server                                                                                     |
 | `NEXT_PUBLIC_APP_URL`                       | web     | `http://localhost:3000`             | Public URL of the web app (share links, metadata)                                                                     |
@@ -85,6 +86,7 @@ All variables live in one root `.env` (see `.env.example`).
 | `MONGODB_URI`                               | web     | `mongodb://127.0.0.1:27017/jamwave` | MongoDB connection string for accounts, including the database name                                                   |
 | `BETTER_AUTH_SECRET`                        | web     | —                                   | Signs session cookies; required in production (`openssl rand -base64 32`)                                             |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | web     | —                                   | Enables "Continue with Google". Redirect URI: `<NEXT_PUBLIC_APP_URL>/api/auth/callback/google`                        |
+| `BREVO_API_KEY` / `EMAIL_FROM`              | web     | —                                   | Sends password-reset emails through Brevo; `EMAIL_FROM` must be a sender verified in Brevo. Without them, "Forgot password" shows the contact email |
 
 ### Getting a YouTube API key
 
@@ -105,8 +107,8 @@ The two apps deploy independently:
 
 | Piece  | Where                                             | Notes                                                                                                                                                                                                        |
 | ------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Web    | https://jamwave.vercel.app                        | Vercel, root directory `apps/web`. Needs `NEXT_PUBLIC_SOCKET_URL` and `NEXT_PUBLIC_APP_URL` set.                                                                                                             |
-| Server | `https://<render-service>.onrender.com` (fill in) | Render free tier, kept awake by an uptime pinger. A cold start can take up to a minute; the web app shows a "server waking up" hint meanwhile. Needs `CORS_ORIGIN`, `TRUST_PROXY_HOPS=1`, `YOUTUBE_API_KEY`. |
+| Web    | https://jamwave.vercel.app                        | Vercel, root directory `apps/web`. Needs `NEXT_PUBLIC_SOCKET_URL`, `NEXT_PUBLIC_APP_URL`, `MONGODB_URI`, `BETTER_AUTH_SECRET`, `JAM_TOKEN_SECRET`; optional `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, `BREVO_API_KEY`/`EMAIL_FROM`.                                                                                                             |
+| Server | `https://jamwave.onrender.com` | Render free tier, kept awake by an uptime pinger. A cold start can take up to a minute; the web app shows a "server waking up" hint meanwhile. Needs `CORS_ORIGIN=https://jamwave.vercel.app`, `TRUST_PROXY_HOPS=1`, `YOUTUBE_API_KEY`, `JAM_TOKEN_SECRET` (same as Vercel). |
 | Health | `GET /health` on the server                       | `ok`, uptime, live rooms, lifetime counters, search budget used today.                                                                                                                                       |
 
 Rooms live in the server's memory. A deploy closes every jam with reason `server_restart`; each browser keeps its queue locally and offers to rebuild the jam in one tap.

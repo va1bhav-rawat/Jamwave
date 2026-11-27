@@ -1,10 +1,11 @@
 'use client';
 
-import { ListMusic, LogOut, User, Users } from 'lucide-react';
+import { ListMusic, LogOut, Settings, User, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '@/components/ui/dropdown';
+import { forgetAccountToken } from '@/lib/accountToken';
 import { authClient } from '@/lib/auth-client';
 
 /** Header slot: "Sign in" when signed out, the account menu when signed in. */
@@ -28,6 +29,7 @@ export function UserMenu() {
   const handle = user.username ?? user.name;
 
   const signOut = async () => {
+    forgetAccountToken();
     await authClient.signOut();
     router.refresh();
   };
@@ -66,6 +68,11 @@ export function UserMenu() {
         <DropdownItem asChild>
           <Link href={`/u/${handle}`}>
             <User className="h-4 w-4" /> My profile
+          </Link>
+        </DropdownItem>
+        <DropdownItem asChild>
+          <Link href="/settings">
+            <Settings className="h-4 w-4" /> Settings
           </Link>
         </DropdownItem>
         <div className="my-1 h-px bg-border" />

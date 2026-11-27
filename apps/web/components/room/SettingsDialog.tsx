@@ -58,13 +58,26 @@ export function SettingsDialog({ children }: { children: ReactNode }) {
             <span>
               <span className="block text-sm font-medium">Everyone can control the music</span>
               <span className="block text-xs text-fg-muted">
-                Play, pause, seek, skip, add and reorder songs. Turn off to make everyone a
-                listener, then allow individual people from the People list.
+                Play, pause, seek, skip, reorder and &ldquo;play next&rdquo;. Turn off to make
+                everyone a listener, then allow individual people from the People list.
               </span>
             </span>
             <Switch
               checked={settings.everyoneControls}
               onCheckedChange={(checked) => update({ everyoneControls: checked })}
+            />
+          </label>
+          <label className="flex cursor-pointer items-center justify-between gap-4 p-4">
+            <span>
+              <span className="block text-sm font-medium">Anyone can add songs</span>
+              <span className="block text-xs text-fg-muted">
+                Turn off so only people with control can add. Everyone can still remove their own
+                songs.
+              </span>
+            </span>
+            <Switch
+              checked={settings.anyoneCanAdd}
+              onCheckedChange={(checked) => update({ anyoneCanAdd: checked })}
             />
           </label>
           <label className="flex cursor-pointer items-center justify-between gap-4 p-4">

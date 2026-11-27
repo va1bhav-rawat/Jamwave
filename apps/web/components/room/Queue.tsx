@@ -24,7 +24,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { errorMessage, jam } from '@/lib/jamClient';
-import { selectCanControl, selectMe, useRoomStore } from '@/lib/store';
+import { selectCanAdd, selectCanControl, selectMe, useRoomStore } from '@/lib/store';
 import { cn, formatDuration, trackToSearchResult } from '@/lib/utils';
 import { SaveToPlaylistDialog } from '@/components/playlists/RoomPlaylists';
 import { Panel } from './Panel';
@@ -36,6 +36,7 @@ export function Queue() {
   const queue = useRoomStore((s) => s.snapshot?.queue ?? EMPTY);
   const history = useRoomStore((s) => s.snapshot?.history ?? EMPTY);
   const canControl = useRoomStore(selectCanControl);
+  const canAdd = useRoomStore(selectCanAdd);
   const me = useRoomStore(selectMe);
   const roomName = useRoomStore((s) => s.snapshot?.settings.name ?? '');
   const [local, setLocal] = useState<{ base: Track[]; order: Track[] } | null>(null);
@@ -93,7 +94,9 @@ export function Queue() {
     >
       {items.length === 0 ? (
         <p className="px-4 py-8 text-center text-sm text-fg-muted">
-          The queue is empty. Add a song above.
+          {canAdd
+            ? 'The queue is empty. Add a song above.'
+            : 'The queue is empty. The host has locked it to people with control.'}
         </p>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>

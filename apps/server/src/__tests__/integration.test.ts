@@ -8,6 +8,8 @@ import type {
   ServerToClientEvents,
   SkipVoteResult,
 } from '@jamwave/shared';
+import { createHmac } from 'node:crypto';
+import { encodeAccountToken, type AccountClaims } from '@jamwave/shared';
 import pino from 'pino';
 import { io as connect, type Socket } from 'socket.io-client';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
@@ -43,6 +45,15 @@ const fakeProvider: MusicProvider = {
 let app: App;
 let port: number;
 const clients: Client[] = [];
+
+const TOKEN_SECRET = 'integration-test-secret-0123456789';
+
+/** What the web app's /api/jam-token would hand a signed-in browser. */
+function accountToken(sub: string, username: string, secret = TOKEN_SECRET): string {
+  const claims: AccountClaims = { sub, username, exp: Date.now() + 60_000 };
+  const signature = createHmac('sha256', secret).update(JSON.stringify(claims)).digest('hex');
+  return encodeAccountToken(claims, signature);
+}
 
 function client(): Client {
   const socket: Client = connect(`http://127.0.0.1:${port}`, {
@@ -88,7 +99,11 @@ function once<E extends keyof ServerToClientEvents>(
 
 beforeAll(async () => {
   app = createApp({
-    config: loadConfig({ NODE_ENV: 'test', CORS_ORIGIN: 'http://localhost:3000' }),
+    config: loadConfig({
+      NODE_ENV: 'test',
+      CORS_ORIGIN: 'http://localhost:3000',
+      JAM_TOKEN_SECRET: TOKEN_SECRET,
+    }),
     logger: pino({ level: 'silent' }),
     provider: fakeProvider,
   });
@@ -104,6 +119,54 @@ afterAll(async () => {
 });
 
 describe('jamwave server end to end', () => {
+  it('knows signed-in people by account, answers presence lookups and bans by account', async () => {
+    const host = client();
+    const created = await request<JoinResult>(host, 'room:create', {
+      name: 'Ana',
+      accountToken: accountToken('acct-ana', 'ana'),
+    });
+    const code = created.snapshot.code;
+    // The username is public; a forged token is ignored and the person is a guest.
+    expect(created.snapshot.participants[0]?.username).toBe('ana');
+    const guest = client();
+    const joined = await request<JoinResult>(guest, 'room:join', {
+      code,
+      name: 'Eve',
+      accountToken: accountToken('acct-eve', 'eve', 'wrong-secret'),
+    });
+    expect(joined.snapshot.participants.find((p) => p.name === 'Eve')?.username).toBeUndefined();
+
+    const presence = (url: string, init: RequestInit) => fetch(`http://127.0.0.1:${port}${url}`, init);
+    const body = JSON.stringify({ ids: ['acct-ana', 'acct-nobody'] });
+    const headers = { authorization: `Bearer ${TOKEN_SECRET}`, 'content-type': 'application/json' };
+    expect((await presence('/api/presence', { method: 'POST', body })).status).toBe(401);
+    const ok = await presence('/api/presence', { method: 'POST', body, headers });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({
+      'acct-ana': { code, roomName: "Ana's jam", listeners: 2, nowPlaying: null },
+    });
+    const bad = await presence('/api/presence', {
+      method: 'POST',
+      body: JSON.stringify({ ids: 'nope' }),
+      headers,
+    });
+    expect(bad.status).toBe(400);
+
+    // A removed account stays out even from a different browser (no device id this time).
+    const bob = client();
+    const bobJoin = await request<JoinResult>(bob, 'room:join', {
+      code,
+      name: 'Bob',
+      accountToken: accountToken('acct-bob', 'bob'),
+    });
+    const told = once(bob, 'room:closed');
+    await request(host, 'participant:remove', { participantId: bobJoin.self.participantId });
+    expect(await told).toEqual({ reason: 'removed' });
+    await expect(
+      request(bob, 'room:join', { code, name: 'Bobby', accountToken: accountToken('acct-bob', 'bob') }),
+    ).rejects.toThrow(/BANNED/);
+  });
+
   it('serves health and room previews over http', async () => {
     const health = (await (await fetch(`http://127.0.0.1:${port}/health`)).json()) as {
       ok: boolean;
@@ -218,15 +281,27 @@ describe('jamwave server end to end', () => {
     const created = await request<JoinResult>(host, 'room:create', { name: 'Host' });
     const code = created.snapshot.code;
     const guest = client();
-    const joined = await request<JoinResult>(guest, 'room:join', { code, name: 'Guest' });
+    const joined = await request<JoinResult>(guest, 'room:join', {
+      code,
+      name: 'Guest',
+      deviceId: 'guest-phone',
+    });
     const guestId = joined.self.participantId;
 
-    // Restricted: a listener can neither add songs nor control playback.
+    // A listener can still add songs, but not jump the queue or control playback.
     await request(host, 'room:settings', { everyoneControls: false });
+    await expect(request(guest, 'queue:add', { items: [result('z')] })).resolves.toEqual({
+      added: 1,
+    });
+    await expect(
+      request(guest, 'queue:add', { items: [result('y')], playNext: true }),
+    ).rejects.toThrow(/FORBIDDEN/);
+    await expect(request(guest, 'playback:pause')).rejects.toThrow(/FORBIDDEN/);
+    // Locked queue: adding needs control too.
+    await request(host, 'room:settings', { anyoneCanAdd: false });
     await expect(request(guest, 'queue:add', { items: [result('a')] })).rejects.toThrow(
       /FORBIDDEN/,
     );
-    await expect(request(guest, 'playback:pause')).rejects.toThrow(/FORBIDDEN/);
 
     // Only the host hands out control, and only the host removes people.
     await expect(
@@ -255,11 +330,20 @@ describe('jamwave server end to end', () => {
     expect(await told).toEqual({ reason: 'removed' });
     expect((await gone).participants[0]?.name).toBe('Host');
     await expect(request(guest, 'chat:send', { text: 'hi' })).rejects.toThrow(/NOT_IN_ROOM/);
-    // Their old seat cannot be reclaimed; joining again is a fresh seat.
+    // Their seat is gone, and the same browser (device id) stays out for the life of the room.
+    await expect(
+      request(guest, 'room:join', {
+        code,
+        name: 'Guest',
+        reclaim: joined.self,
+        deviceId: 'guest-phone',
+      }),
+    ).rejects.toThrow(/BANNED/);
+    // Another browser is a fresh seat: the ban is a nuisance filter, not a security boundary.
     const back = await request<JoinResult>(guest, 'room:join', {
       code,
       name: 'Guest',
-      reclaim: joined.self,
+      deviceId: 'guest-laptop',
     });
     expect(back.self.participantId).not.toBe(guestId);
   });

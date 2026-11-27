@@ -17,16 +17,19 @@ export function Stage() {
   const needsGesture = useRoomStore((s) => s.sync.needsGesture);
   const volume = useRoomStore((s) => s.volume);
   const videoSize = useRoomStore((s) => s.videoSize);
+  const anyoneCanAdd = useRoomStore((s) => s.snapshot?.settings.anyoneCanAdd ?? true);
   const addedBy = useRoomStore((s) => {
     const id = s.snapshot?.playback.track?.addedBy.id;
     return s.snapshot?.participants.find((p) => p.id === id) ?? null;
   });
   const hostRef = useRef<HTMLDivElement>(null);
-  // Touch devices get YouTube's own controls: its fullscreen button is the way into picture-in-picture.
   const coarse = useMediaQuery('(pointer: coarse)');
   const { resume } = useSyncedPlayer(hostRef, playback, {
     volume,
-    nativeControls: coarse,
+    // YouTube's own controls everywhere: their gear menu is the only way to pick a video quality,
+    // and on phones their fullscreen button is the way into picture-in-picture. Play/pause/seek
+    // made there are forwarded to the room (or snapped back) by the callbacks below.
+    nativeControls: true,
     onEnded: jam.reportEnded,
     onError: jam.reportError,
     onDuration: jam.reportDuration,
@@ -125,8 +128,10 @@ export function Stage() {
                   </span>
                 ) : null}
               </>
-            ) : (
+            ) : anyoneCanAdd ? (
               'Everyone in the jam can add songs'
+            ) : (
+              'The host picks the songs in this jam'
             )}
           </div>
         </div>
