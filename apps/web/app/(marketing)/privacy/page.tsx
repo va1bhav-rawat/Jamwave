@@ -66,8 +66,21 @@ export default function PrivacyPage() {
           Jamwave uses local storage for your nickname, volume and video size, for the codes of jams
           you recently joined (so you can jump back in) and for the last queue you listened to (so
           you can rebuild a jam that ended), and session storage so that refreshing the page keeps
-          your seat in a jam. All of it stays in your browser. We do not use advertising or
-          cross-site tracking cookies.
+          your seat in a jam. All of it stays in your browser, apart from the random analytics id
+          described below. We do not use advertising or cross-site tracking cookies.
+        </p>
+      </section>
+
+      <section className="mt-10 space-y-4 text-fg-muted">
+        <h2 className="text-xl font-semibold text-fg">Analytics</h2>
+        <p>
+          To learn which parts of Jamwave people actually use, we count page views and a few
+          actions, such as &ldquo;created a jam&rdquo;, &ldquo;added a song&rdquo; or &ldquo;saved a
+          playlist&rdquo;, with PostHog, hosted in the European Union. It works without cookies: a
+          random id is kept in your browser&apos;s local storage. It does not record your screen or
+          what you type, and it never receives song titles, chat messages, nicknames or email
+          addresses. If you are signed in, your actions are counted under your account id, not your
+          email. Your IP address is used only to work out your country and is not stored.
         </p>
       </section>
 

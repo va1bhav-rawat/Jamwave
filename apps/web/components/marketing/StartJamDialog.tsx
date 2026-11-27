@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { track } from '@/lib/analytics';
 import { useAccountName } from '@/lib/auth-client';
 import { createRoom, errorMessage, seedQueue } from '@/lib/jamClient';
 import { session } from '@/lib/session';
@@ -45,6 +46,10 @@ export function StartJamDialog({
     setBusy(true);
     try {
       const code = await createRoom(nickname, roomName);
+      track('jam_created', {
+        from: rebuilding ? 'rebuild' : fromPlaylist ? 'playlist' : 'fresh',
+        seeded_tracks: seeded ? seed.length : 0,
+      });
       if (seeded) {
         try {
           const added = await seedQueue(seed.slice(0, LIMITS.MAX_QUEUE));

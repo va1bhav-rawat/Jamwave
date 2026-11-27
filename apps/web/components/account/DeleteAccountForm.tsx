@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { resetIdentity } from '@/lib/analytics';
 import { authClient, authErrorMessage } from '@/lib/auth-client';
 
 /**
@@ -31,6 +32,7 @@ export function DeleteAccountForm({ hasPassword }: { hasPassword: boolean }) {
       setError(authErrorMessage(failure, 'Could not delete the account. Please try again.'));
       return;
     }
+    resetIdentity();
     setOpen(false);
     setDone(true);
   };

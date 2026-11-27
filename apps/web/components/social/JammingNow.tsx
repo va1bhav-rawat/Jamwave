@@ -22,7 +22,7 @@ export function JammingNow({ people }: { people: Jamming[] }) {
           <PersonRow key={user.id} user={user}>
             <JamSummary presence={presence} className="hidden sm:flex" />
             <Button asChild size="sm">
-              <Link href={`/jam/${presence.code}`}>Join</Link>
+              <Link href={`/jam/${presence.code}?via=friend`}>Join</Link>
             </Button>
           </PersonRow>
         ))}

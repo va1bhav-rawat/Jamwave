@@ -15,6 +15,7 @@ import {
   myPlaylistsAction,
   playlistTracksAction,
 } from '@/lib/actions';
+import { track } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 import { errorMessage, seedQueue } from '@/lib/jamClient';
 import { PLAYLIST_LIMITS, type PlaylistSummary } from '@/lib/social';
@@ -80,6 +81,7 @@ export function PlaylistPicker({ children }: { children: ReactNode }) {
       const free = LIMITS.MAX_QUEUE - (snapshot?.queue.length ?? 0);
       if (free <= 0) throw new Error(`The queue is full (${LIMITS.MAX_QUEUE} songs max)`);
       const added = await seedQueue(result.data.slice(0, free));
+      track('track_added', { via: 'playlist', count: added, play_next: false });
       const skipped = result.data.length - added;
       toast.success(
         `Added ${added} song${added === 1 ? '' : 's'} from ${playlist.name}` +
@@ -186,7 +188,10 @@ export function SaveToPlaylistDialog({
     const result = await addTracksToPlaylistAction(playlist.id, items);
     setBusy(false);
     if (!result.ok) toast.error(result.error);
-    else finish(result.data.added, playlist.name);
+    else {
+      track('playlist_saved', { tracks: result.data.added });
+      finish(result.data.added, playlist.name);
+    }
   };
 
   const createNew = async (event: React.FormEvent) => {
@@ -196,7 +201,10 @@ export function SaveToPlaylistDialog({
     const result = await createPlaylistAction({ name, tracks: items });
     setBusy(false);
     if (!result.ok) toast.error(result.error);
-    else finish(items.length, name.trim());
+    else {
+      track('playlist_created', { from: 'jam', tracks: items.length });
+      finish(items.length, name.trim());
+    }
   };
 
   return (

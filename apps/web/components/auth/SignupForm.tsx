@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { track } from '@/lib/analytics';
 import { authClient, authErrorMessage } from '@/lib/auth-client';
 import { defaultUsernameBase } from '@/lib/username';
 import { GoogleButton, OrDivider } from './GoogleButton';
@@ -39,6 +40,7 @@ export function SignupForm({ next, googleEnabled }: { next: string; googleEnable
       setBusy(false);
       return;
     }
+    track('signed_up', { method: 'password' });
     router.push(`/onboarding?next=${encodeURIComponent(next)}`);
   };
 

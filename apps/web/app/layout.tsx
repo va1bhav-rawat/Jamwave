@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
+import { AnalyticsIdentity } from '@/components/analytics/AnalyticsIdentity';
+import { analyticsEnabled } from '@/lib/analytics';
 import { APP_URL } from '@/lib/env';
 import './globals.css';
 
@@ -51,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
       <body className="flex min-h-full flex-col">
         {children}
+        {analyticsEnabled ? <AnalyticsIdentity /> : null}
         <Toaster theme="dark" position="top-center" richColors closeButton duration={3500} />
       </body>
     </html>

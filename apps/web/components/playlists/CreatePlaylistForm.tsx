@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createPlaylistAction } from '@/lib/actions';
+import { track } from '@/lib/analytics';
 import { PLAYLIST_LIMITS } from '@/lib/social';
 
 export function CreatePlaylistForm() {
@@ -24,6 +25,7 @@ export function CreatePlaylistForm() {
       setBusy(false);
       return;
     }
+    track('playlist_created', { from: 'page', tracks: 0 });
     router.push(`/playlists/${result.data.id}`);
   };
 

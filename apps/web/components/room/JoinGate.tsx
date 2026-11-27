@@ -10,6 +10,7 @@ import { WakingServerHint } from '@/components/marketing/WakingServerHint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { track } from '@/lib/analytics';
 import { useAccountName } from '@/lib/auth-client';
 import { errorCode, errorMessage, joinRoom } from '@/lib/jamClient';
 import { session } from '@/lib/session';
@@ -47,6 +48,9 @@ export function JoinGate({
     if (!nickname) return;
     try {
       await joinRoom(code, nickname);
+      // Presence "Join" buttons link here with ?via=friend; everything else is a shared link.
+      const via = new URLSearchParams(window.location.search).get('via');
+      track('jam_joined', { via: via === 'friend' ? 'friend' : 'link' });
     } catch (err) {
       useRoomStore
         .getState()

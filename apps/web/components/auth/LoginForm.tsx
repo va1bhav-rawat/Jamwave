@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { track } from '@/lib/analytics';
 import { authClient, authErrorMessage } from '@/lib/auth-client';
 import { GoogleButton, OrDivider } from './GoogleButton';
 
@@ -36,6 +37,7 @@ export function LoginForm({
       setBusy(false);
       return;
     }
+    track('signed_in', { method: 'password' }, { instant: true });
     // A full navigation so server-rendered pages see the new session cookie.
     window.location.assign(next);
   };

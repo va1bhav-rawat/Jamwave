@@ -8,6 +8,7 @@ import { PlaylistPicker, SaveToPlaylistDialog } from '@/components/playlists/Roo
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { track } from '@/lib/analytics';
 import { errorMessage, jam } from '@/lib/jamClient';
 import { selectCanAdd, selectCanControl, useRoomStore } from '@/lib/store';
 import { formatDuration, looksLikeUrl } from '@/lib/utils';
@@ -38,7 +39,7 @@ export function AddTrack() {
   const [notice, setNotice] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(() => new Set());
 
-  const find = async (raw: string) => {
+  const find = async (raw: string, source: 'typed' | 'quick_pick' = 'typed') => {
     const q = raw.trim();
     if (!q) return;
     if (!looksLikeUrl(q) && q.length < LIMITS.SEARCH_MIN) {
@@ -49,6 +50,12 @@ export function AddTrack() {
     setNotice(null);
     try {
       const response = looksLikeUrl(q) ? await jam.resolve(q) : await jam.search(q);
+      track('search', {
+        kind: looksLikeUrl(q) ? 'link' : 'query',
+        source,
+        results: response.results.length,
+        cached: response.cached,
+      });
       setResults(response.results);
       setAdded(new Set());
       if (response.results.length === 0) {
@@ -69,12 +76,17 @@ export function AddTrack() {
 
   const pick = (q: string) => {
     setQuery(q);
-    void find(q);
+    void find(q, 'quick_pick');
   };
 
   const add = async (item: SearchResult, playNext = false) => {
     try {
       await jam.addTracks([item], playNext);
+      track('track_added', {
+        via: looksLikeUrl(query) ? 'link' : 'search',
+        count: 1,
+        play_next: playNext,
+      });
       setAdded((prev) => new Set(prev).add(item.providerId));
       toast.success(playNext ? `Playing next: ${item.title}` : `Added: ${item.title}`);
     } catch (error) {
@@ -85,6 +97,7 @@ export function AddTrack() {
   const addAll = async () => {
     try {
       const { added: count } = await jam.addTracks(results.slice(0, LIMITS.QUEUE_ADD_BATCH_MAX));
+      track('track_added', { via: 'add_all', count, play_next: false });
       setAdded(new Set(results.map((r) => r.providerId)));
       toast.success(`Added ${count} tracks`);
     } catch (error) {

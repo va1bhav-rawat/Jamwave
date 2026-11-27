@@ -6,6 +6,7 @@ import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { track } from '@/lib/analytics';
 import { useRoomStore } from '@/lib/store';
 import { useOrigin } from '@/lib/useBrowser';
 
@@ -21,6 +22,7 @@ export function ShareDialog({ children }: { children: ReactNode }) {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      track('invite_shared', { method: 'copy' });
       toast.success('Link copied');
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -35,6 +37,7 @@ export function ShareDialog({ children }: { children: ReactNode }) {
         text: `Listen with me — code ${code}`,
         url,
       });
+      track('invite_shared', { method: 'share' });
     } catch {
       // user cancelled
     }

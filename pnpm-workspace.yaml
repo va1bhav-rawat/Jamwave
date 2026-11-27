@@ -5,6 +5,7 @@ packages:
 # Native/postinstall packages that are allowed to run build scripts.
 allowBuilds:
   '@tailwindcss/oxide': true
+  core-js: false
   esbuild: true
   sharp: true
   unrs-resolver: true

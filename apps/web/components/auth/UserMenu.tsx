@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '@/components/ui/dropdown';
 import { forgetAccountToken } from '@/lib/accountToken';
+import { resetIdentity } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 
 /** Header slot: "Sign in" when signed out, the account menu when signed in. */
@@ -30,6 +31,7 @@ export function UserMenu() {
 
   const signOut = async () => {
     forgetAccountToken();
+    resetIdentity();
     await authClient.signOut();
     router.refresh();
   };

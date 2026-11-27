@@ -55,7 +55,7 @@ export default async function ProfilePage({ params }: Props) {
             />
           </div>
           <Button asChild>
-            <Link href={`/jam/${jamming.code}`}>Join</Link>
+            <Link href={`/jam/${jamming.code}?via=friend`}>Join</Link>
           </Button>
         </div>
       ) : null}

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Button, type ButtonSize } from '@/components/ui/button';
 import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '@/components/ui/dropdown';
 import { acceptFriendAction, removeFriendAction, requestFriendAction } from '@/lib/actions';
+import { track } from '@/lib/analytics';
 import type { ActionResult, Relation } from '@/lib/social';
 
 /** Add / accept / remove a friend, depending on how the viewer relates to `username`. */
@@ -50,6 +51,8 @@ export function FriendButton({
       return;
     }
     setRelation(result.data);
+    if (action === requestFriendAction) track('friend_requested', {});
+    else if (action === acceptFriendAction) track('friend_accepted', {});
     if (done) toast.success(done);
     // Other parts of the page (friend lists, counts) are server-rendered.
     router.refresh();
