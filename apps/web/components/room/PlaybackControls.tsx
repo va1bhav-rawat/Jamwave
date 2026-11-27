@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import { serverNow } from '@/lib/clock';
 import { errorMessage, jam } from '@/lib/jamClient';
 import { selectCanControl, selectMe, useRoomStore } from '@/lib/store';
-import { useMediaQuery } from '@/lib/useBrowser';
 import { useTicker } from '@/lib/useTicker';
 import { cn, formatDuration, formatPosition } from '@/lib/utils';
 
@@ -30,7 +29,6 @@ export function PlaybackControls() {
   const setVolume = useRoomStore((s) => s.setVolume);
   const videoSize = useRoomStore((s) => s.videoSize);
   const setVideoSize = useRoomStore((s) => s.setVideoSize);
-  const coarse = useMediaQuery('(pointer: coarse)');
   const [scrub, setScrub] = useState<number | null>(null);
   const [lastVolume, setLastVolume] = useState(80);
 
@@ -168,11 +166,9 @@ export function PlaybackControls() {
             size="icon"
             aria-label={videoSize === 'small' ? 'Full-size video' : 'Smaller video (saves data)'}
             title={
-              coarse
-                ? "On phones, the video's quality menu saves more data."
-                : videoSize === 'small'
-                  ? 'Full-size video'
-                  : 'Smaller video (saves data)'
+              videoSize === 'small'
+                ? 'Full-size video'
+                : "Smaller video (saves data). For a set quality, use the gear in the video's own controls."
             }
             onClick={() => setVideoSize(videoSize === 'small' ? 'auto' : 'small')}
           >

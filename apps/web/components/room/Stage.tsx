@@ -23,11 +23,13 @@ export function Stage() {
     return s.snapshot?.participants.find((p) => p.id === id) ?? null;
   });
   const hostRef = useRef<HTMLDivElement>(null);
-  // Touch devices get YouTube's own controls: its fullscreen button is the way into picture-in-picture.
   const coarse = useMediaQuery('(pointer: coarse)');
   const { resume } = useSyncedPlayer(hostRef, playback, {
     volume,
-    nativeControls: coarse,
+    // YouTube's own controls everywhere: their gear menu is the only way to pick a video quality,
+    // and on phones their fullscreen button is the way into picture-in-picture. Play/pause/seek
+    // made there are forwarded to the room (or snapped back) by the callbacks below.
+    nativeControls: true,
     onEnded: jam.reportEnded,
     onError: jam.reportError,
     onDuration: jam.reportDuration,
@@ -128,10 +130,10 @@ export function Stage() {
               </>
             ) : anyoneCanAdd ? (
               'Everyone in the jam can add songs'
-            )}
-          </div>
             ) : (
               'The host picks the songs in this jam'
+            )}
+          </div>
         </div>
       </div>
     </section>
