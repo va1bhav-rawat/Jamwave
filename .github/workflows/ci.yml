@@ -22,3 +22,17 @@ jobs:
       - run: pnpm build
         env:
           NEXT_TELEMETRY_DISABLED: 1
+          # Baked into the sitemap and canonicals; must match the link-check origin below.
+          NEXT_PUBLIC_APP_URL: http://localhost:3100
+      # Serve the built web app and crawl every public page: a broken internal link fails CI.
+      - name: Check internal links
+        env:
+          BETTER_AUTH_SECRET: ci-only-secret-not-used-in-production-0123456789
+          NEXT_PUBLIC_APP_URL: http://localhost:3100
+        run: |
+          pnpm -C apps/web exec next start -p 3100 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3100/ && break
+            sleep 1
+          done
+          node apps/web/scripts/check-links.mjs http://localhost:3100
