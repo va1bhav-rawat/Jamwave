@@ -10,6 +10,9 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Logo />
         <nav aria-label="Primary" className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
+            <Link href="/help">Help</Link>
+          </Button>
           <Button asChild variant="ghost" size="sm">
             <Link href="/join">
               <span className="sm:hidden">Join</span>

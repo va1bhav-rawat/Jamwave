@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { contentPages } from '@/content/pages';
 import { APP_URL } from '@/lib/env';
 
 /**
@@ -13,7 +14,12 @@ const STATIC_PAGES: { path: string; lastModified: string; priority: number }[] =
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return STATIC_PAGES.map((page) => ({
+  const content = contentPages.map((page) => ({
+    path: `/${page.slug}`,
+    lastModified: page.lastModified,
+    priority: page.kind === 'guide' ? 0.8 : 0.4,
+  }));
+  return [...STATIC_PAGES, ...content].map((page) => ({
     url: page.path === '/' ? `${APP_URL}/` : `${APP_URL}${page.path}`,
     lastModified: new Date(page.lastModified),
     priority: page.priority,

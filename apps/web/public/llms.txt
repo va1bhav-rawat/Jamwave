@@ -1,0 +1,48 @@
+# Jamwave
+
+> Jamwave is a free web app to listen to music together online: share one link and everyone hears the same song at the same second.
+
+Jamwave runs in the browser on any phone, tablet or laptop. One person starts a jam, shares a link or a 6-character code, and everyone who joins hears the same song at the same second (usually within a third of a second). Anyone can add songs to one shared queue; there is chat, emoji reactions, vote-to-skip and host controls. Music plays through the official YouTube embedded player. Nothing to install, no account needed to join, no ads from us, no paid tier. Built in India by an independent developer.
+
+## Key facts
+
+- Price: free. No paid tier, and no ads from us.
+- Listeners per jam: up to 50.
+- Shared queue: up to 200 songs, anyone can add.
+- Sync: same song, same second, usually within a third of a second.
+- Joining: a link or 6-character code. No app, no account needed.
+- Music source: the official YouTube embedded player (search inside the jam, or paste a YouTube video or playlist link).
+- Devices: any phone, tablet or laptop browser. On phones, picture-in-picture keeps the music playing while other apps are used.
+- When everyone leaves: the jam closes after 10 minutes; the queue is remembered on the device and can be rebuilt in one tap.
+- Optional free account: public playlists, friends, and "a friend is in a jam → Join".
+
+## Definitions
+
+- A jam is a live listening session on Jamwave. One person starts it and shares a link or 6-character code; everyone who joins hears the same song at the same second.
+- The host is the person who started the jam and holds the controls (who may play/pause/skip, lock the queue, remove people).
+- The queue is the jam's shared list of songs; anyone can add to it unless the host locks it.
+- An online listening party is a session where friends in different places hear the same music at the same moment.
+
+## Pages
+
+- [How to listen to music together online](/listen-to-music-together): the 3-step guide, what a jam is, FAQs.
+- [Listen to YouTube together](/youtube-together): paste a video or playlist link, in sync, free.
+- [Long-distance couples](/long-distance-couples): same song, same second, across cities and time zones.
+- [Friend groups](/friend-groups): one queue up to 50 people can add to; host controls and vote-to-skip.
+- [Study together](/study-together): a locked focus playlist for a remote study group.
+- [Online listening party](/listening-party): birthday and album-release nights, up to 50 guests.
+- [Help & FAQ](/help): every question in one place.
+- [About](/about): who builds it, why, and how to get in touch.
+- [Privacy](/privacy) and [Terms](/terms).
+
+## What Jamwave is not
+
+- Not a streaming service: it hosts no music, copies no audio and downloads nothing. Playback happens in YouTube's official player.
+- Not an app to install: it is a website.
+- Not affiliated with YouTube.
+
+## Contact
+
+- Email: vaibhavr325@gmail.com
+- Source code: https://github.com/va1bhav-rawat/Jamwave
+- Cite as: Jamwave (jamwave)

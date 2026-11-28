@@ -3,8 +3,11 @@ import Link from 'next/link';
 import { Faq } from '@/components/marketing/Faq';
 import { HowItWorks } from '@/components/marketing/HowItWorks';
 import { JoinForm } from '@/components/marketing/JoinForm';
+import { KeyFacts } from '@/components/marketing/KeyFacts';
+import { ProductPreview } from '@/components/marketing/ProductPreview';
 import { RecentJams } from '@/components/marketing/RecentJams';
 import { StartJamDialog } from '@/components/marketing/StartJamDialog';
+import { UseCases } from '@/components/marketing/UseCases';
 import { WhyNotJustLinks } from '@/components/marketing/WhyNotJustLinks';
 import { Button } from '@/components/ui/button';
 import { landingFaq } from '@/content/faq';
@@ -53,11 +56,16 @@ export default function LandingPage() {
             Questions
           </Link>
         </p>
+        <ProductPreview />
       </section>
 
       <HowItWorks />
+      <UseCases />
       <WhyNotJustLinks />
-      <Faq items={landingFaq} />
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
+        <KeyFacts />
+      </div>
+      <Faq items={landingFaq} more={{ href: '/help', label: 'More questions → Help & FAQ' }} />
 
       <section className="mx-auto max-w-3xl px-4 pb-24 pt-8 text-center sm:px-6">
         <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Ready when you are</h2>
