@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Breadcrumbs } from '@/components/marketing/Breadcrumbs';
 import { CONTACT_EMAIL } from '@/lib/env';
 
 export const metadata: Metadata = {
@@ -9,7 +10,13 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <article className="prose-invert mx-auto max-w-3xl px-4 py-16 sm:px-6">
-      <h1 className="text-4xl font-bold tracking-tight">Privacy Policy</h1>
+      <Breadcrumbs
+        items={[
+          { name: 'Jamwave', path: '/' },
+          { name: 'Privacy Policy', path: '/privacy' },
+        ]}
+      />
+      <h1 className="mt-6 text-4xl font-bold tracking-tight">Privacy Policy</h1>
       <p className="mt-2 text-sm text-fg-subtle">Last updated: 21 November 2026</p>
 
       <section className="mt-10 space-y-4 text-fg-muted">

@@ -1,6 +1,6 @@
 # Jamwave
 
-**Listen together. For free.** Jamwave is a web app for synchronized music listening with friends and loved ones — the idea behind Spotify's "Jam", without the Premium requirement. One person starts a jam, shares a link or a 6-character code, and everyone hears the same song at the same second, adds to one shared queue, chats and reacts. No app, no account, no subscription.
+**Listen together. For free.** Jamwave is a free web app to listen to music together online, in sync, from one link. One person starts a jam, shares a link or a 6-character code, and everyone hears the same song at the same second, adds to one shared queue, chats and reacts. No app, no account, no subscription.
 
 Music plays through YouTube's official embedded player, so the catalogue is enormous and nobody needs to pay anything.
 
@@ -84,6 +84,7 @@ All variables live in one root `.env` (see `.env.example`).
 | `NEXT_PUBLIC_APP_URL`                       | web     | `http://localhost:3000`             | Public URL of the web app (share links, metadata)                                                                     |
 | `SOCKET_INTERNAL_URL`                       | web     | = `NEXT_PUBLIC_SOCKET_URL`          | Server-side URL for link previews (e.g. a private network address)                                                    |
 | `NEXT_PUBLIC_POSTHOG_KEY` / `NEXT_PUBLIC_POSTHOG_HOST` | web | — / `https://eu.i.posthog.com` | PostHog product analytics (free tier). Without the key nothing loads. Turn on "Discard client IP data" in the PostHog project; the privacy page promises it |
+| `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | web | — | Google Search Console verification token; rendered as the `google-site-verification` meta tag when set |
 | `MONGODB_URI`                               | web     | `mongodb://127.0.0.1:27017/jamwave` | MongoDB connection string for accounts, including the database name                                                   |
 | `BETTER_AUTH_SECRET`                        | web     | —                                   | Signs session cookies; required in production (`openssl rand -base64 32`)                                             |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | web     | —                                   | Enables "Continue with Google". Redirect URI: `<NEXT_PUBLIC_APP_URL>/api/auth/callback/google`                        |

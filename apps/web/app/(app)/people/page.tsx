@@ -14,6 +14,7 @@ import type { PublicUser, Relation } from '@/lib/social';
 export const metadata: Metadata = {
   title: 'People',
   description: 'Find people on Jamwave, add friends and browse their playlists.',
+  robots: { index: false },
 };
 
 function PeopleList({

@@ -7,6 +7,7 @@ import { safeNextPath } from '@/lib/username';
 export const metadata: Metadata = {
   title: 'Create an account',
   description: 'Create a free Jamwave account to save playlists and find your friends.',
+  robots: { index: false },
 };
 
 export default async function SignupPage({

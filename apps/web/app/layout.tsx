@@ -6,8 +6,15 @@ import { analyticsEnabled } from '@/lib/analytics';
 import { APP_URL } from '@/lib/env';
 import './globals.css';
 
-const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
-const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
+const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'], display: 'swap' });
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+});
+
+const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -16,17 +23,12 @@ export const metadata: Metadata = {
     template: '%s · Jamwave',
   },
   description:
-    'Jamwave is the free way to listen to music with friends and loved ones in perfect sync. Share one link, add songs to a shared queue, chat and react — no app, no account, no subscription.',
+    'Jamwave is the free way to listen to music together online: share one link and everyone hears the same song at the same second. No app, no account to join, no ads.',
   applicationName: 'Jamwave',
   appleWebApp: { capable: true, title: 'Jamwave', statusBarStyle: 'black-translucent' },
-  keywords: [
-    'listen together',
-    'free spotify jam alternative',
-    'listen to music with friends online',
-    'synced music',
-    'jam session',
-    'youtube together',
-  ],
+  // Every page is its own canonical; Next resolves this against metadataBase per route.
+  alternates: { canonical: './' },
+  ...(googleSiteVerification ? { verification: { google: googleSiteVerification } } : {}),
   openGraph: {
     type: 'website',
     siteName: 'Jamwave',
@@ -50,7 +52,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
+    <html lang="en-IN" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
       <body className="flex min-h-full flex-col">
         {children}
         {analyticsEnabled ? <AnalyticsIdentity /> : null}

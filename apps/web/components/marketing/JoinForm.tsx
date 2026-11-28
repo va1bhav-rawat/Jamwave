@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { currentPage, track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 
 export function JoinForm({
@@ -26,6 +27,7 @@ export function JoinForm({
       setError('Codes are 6 letters or digits, like ABC234');
       return;
     }
+    track('cta_clicked', { page: currentPage(), cta: 'join' });
     router.push(`/jam/${normalized}`);
   };
 
@@ -48,11 +50,13 @@ export function JoinForm({
             setError(null);
           }}
         />
-        <Button type="submit" variant="secondary" size="md" className="h-11 px-4" aria-label="Join">
-          Join <ArrowRight className="h-4 w-4" />
+        <Button type="submit" variant="secondary" size="md" className="h-11 px-4">
+          Join <ArrowRight className="h-4 w-4" aria-hidden />
         </Button>
       </div>
-      {error ? <p className="mt-2 text-sm text-red-300">{error}</p> : null}
+      <p aria-live="polite" className={cn('mt-2 text-sm text-red-300', !error && 'sr-only')}>
+        {error}
+      </p>
     </form>
   );
 }

@@ -9,15 +9,18 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-bg/70 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Logo />
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-            <Link href="/join">Join a jam</Link>
+        <nav aria-label="Primary" className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/join">
+              <span className="sm:hidden">Join</span>
+              <span className="hidden sm:inline">Join a jam</span>
+            </Link>
           </Button>
-          <StartJamDialog>
+          <StartJamDialog cta="header">
             <Button size="sm">Start a jam</Button>
           </StartJamDialog>
           <UserMenu />
-        </div>
+        </nav>
       </div>
     </header>
   );

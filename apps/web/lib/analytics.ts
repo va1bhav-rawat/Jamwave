@@ -10,7 +10,9 @@ import posthog from 'posthog-js';
 export const analyticsEnabled = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY);
 
 export type AnalyticsEvent =
-  | ['jam_created', { from: 'fresh' | 'rebuild' | 'playlist'; seeded_tracks: number }]
+  | ['jam_created', { from: 'fresh' | 'rebuild' | 'playlist'; seeded_tracks: number; page: string }]
+  /** A primary button was pressed; `page` is the path it lived on, `cta` which one. */
+  | ['cta_clicked', { page: string; cta: string }]
   | ['jam_joined', { via: 'link' | 'friend' }]
   | [
       'search',
@@ -27,6 +29,11 @@ export type AnalyticsEvent =
 
 type EventName = AnalyticsEvent[0];
 type PropsOf<N extends EventName> = Extract<AnalyticsEvent, [N, unknown]>[1];
+
+/** The path of the page the person is on, for attributing conversions to content pages. */
+export function currentPage(): string {
+  return typeof window === 'undefined' ? '' : window.location.pathname;
+}
 
 /** Count something. `instant` sends right away, for events just before a full page navigation. */
 export function track<N extends EventName>(

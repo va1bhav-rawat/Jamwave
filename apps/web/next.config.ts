@@ -24,6 +24,16 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@jamwave/shared'],
   // PostHog's API paths end with a slash; without this Next would redirect them.
   skipTrailingSlashRedirect: true,
+  // …so do the trailing-slash redirect ourselves for everything else: one URL per page.
+  async redirects() {
+    return [
+      {
+        source: '/:path((?!ingest(?:/|$)).+)/',
+        destination: '/:path',
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       { source: '/ingest/static/:path*', destination: `${posthogAssets}/static/:path*` },

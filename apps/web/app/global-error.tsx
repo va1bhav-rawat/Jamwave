@@ -20,7 +20,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="en">
+    <html lang="en-IN">
       <body className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 text-center">
         <h1 className="text-3xl font-semibold">Something skipped a beat</h1>
         <p className="max-w-md text-fg-muted">

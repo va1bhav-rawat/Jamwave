@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { track } from '@/lib/analytics';
+import { currentPage, track } from '@/lib/analytics';
 import { useAccountName } from '@/lib/auth-client';
 import { createRoom, errorMessage, seedQueue } from '@/lib/jamClient';
 import { session } from '@/lib/session';
@@ -20,6 +20,7 @@ export function StartJamDialog({
   seed,
   seedName,
   seedKind = 'rebuild',
+  cta = 'start',
 }: {
   children: ReactNode;
   /** Tracks to queue up right after the jam is created (rebuilding a jam that ended). */
@@ -28,6 +29,8 @@ export function StartJamDialog({
   seedName?: string;
   /** Where the seed comes from: an ended jam being rebuilt, or a playlist. */
   seedKind?: 'rebuild' | 'playlist';
+  /** Which button opened it, for analytics (hero, bottom, header, page…). */
+  cta?: string;
 }) {
   const router = useRouter();
   const accountName = useAccountName();
@@ -49,6 +52,7 @@ export function StartJamDialog({
       track('jam_created', {
         from: rebuilding ? 'rebuild' : fromPlaylist ? 'playlist' : 'fresh',
         seeded_tracks: seeded ? seed.length : 0,
+        page: currentPage(),
       });
       if (seeded) {
         try {
@@ -73,6 +77,7 @@ export function StartJamDialog({
       onOpenChange={(next) => {
         if (busy) return;
         if (next) {
+          track('cta_clicked', { page: currentPage(), cta });
           // Signed-in people jam under their username unless they type something else.
           setName((current) => current || accountName || session.getNickname() || '');
           setRoomName((current) => current || seedName || '');
